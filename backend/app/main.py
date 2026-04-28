@@ -12,8 +12,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="한입커리 API",
-    description="숭실대 IT학과 커리큘럼 그래프 + AI 콘텐츠 추천",
+    title="CourseNest API",
+    description="숭실대 커리큘럼 그래프 + AI 콘텐츠 추천",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -31,6 +31,6 @@ app.include_router(contents.router)
 app.include_router(resources.router)
 
 
-@app.get("/", tags=["Health"])
+@app.get("/", tags=["General"])
 def root():
-    return {"status": "ok", "service": "한입커리 API"}
+    return {"status": "ok", "service": "CourseNest API"}
