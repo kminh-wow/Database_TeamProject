@@ -22,7 +22,7 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
     with get_session() as session:
         result = session.run(
             """
-            MATCH (c:Course {course_id: $course_id})-[:HAS_CONTENT]->(ct:Content)
+            MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
             RETURN ct.title AS title, ct.url AS url, ct.type AS type
             """,
             course_id=course_id,
@@ -40,7 +40,7 @@ def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None
         for item in contents:
             session.run(
                 """
-                MATCH (c:Course {course_id: $course_id})
+                MATCH (c:Course {courseId: $course_id})
                 MERGE (ct:Content {url: $url})
                 SET ct.title = $title, ct.type = $type, ct.generated_at = $generated_at
                 MERGE (c)-[:HAS_CONTENT]->(ct)
@@ -86,7 +86,7 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
     # 과목 정보 조회
     with get_session() as session:
         result = session.run(
-            "MATCH (c:Course {course_id: $course_id}) RETURN c.name AS name, c.description AS description",
+            "MATCH (c:Course {courseId: $course_id}) RETURN c.nameKr AS name, c.descKr AS description",
             course_id=course_id,
         )
         record = result.single()

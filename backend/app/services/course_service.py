@@ -22,7 +22,7 @@ def get_departments() -> list[DepartmentResponse]:
 def get_course(course_id: str) -> CourseResponse | None:
     with get_session() as session:
         result = session.run(
-            "MATCH (c:Course {course_id: $course_id}) RETURN c",
+            "MATCH (c:Course {courseId: $course_id}) RETURN c",
             course_id=course_id,
         )
         record = result.single()
@@ -30,14 +30,14 @@ def get_course(course_id: str) -> CourseResponse | None:
             return None
         c = record["c"]
         return CourseResponse(
-            course_id=c["course_id"],
-            name=c["name"],
-            name_en=c.get("name_en"),
-            year=c.get("year"),
-            course_type=c.get("course_type"),
+            course_id=c["courseId"],
+            name=c["nameKr"],
+            name_en=c.get("nameEn"),
+            year=c.get("grade"),
+            course_type=c.get("type"),
             credits=c.get("credits"),
             hours=c.get("hours"),
-            description=c.get("description"),
+            description=c.get("descKr"),
         )
 
 
@@ -48,7 +48,7 @@ def get_curriculum_graph(department_name: str) -> CurriculumGraphResponse:
             """
             MATCH (c:Course)-[:BELONGS_TO]->(d:Department {name: $dept})
             RETURN c
-            ORDER BY c.year, c.name
+            ORDER BY c.grade, c.nameKr
             """,
             dept=department_name,
         )
@@ -60,7 +60,7 @@ def get_curriculum_graph(department_name: str) -> CurriculumGraphResponse:
             MATCH (a:Course)-[:BELONGS_TO]->(d:Department {name: $dept})
             MATCH (b:Course)-[:BELONGS_TO]->(d)
             MATCH (a)-[:PREREQUISITE_OF]->(b)
-            RETURN a.course_id AS source, b.course_id AS target
+            RETURN a.courseId AS source, b.courseId AS target
             """,
             dept=department_name,
         )
@@ -71,17 +71,17 @@ def get_curriculum_graph(department_name: str) -> CurriculumGraphResponse:
     nodes: list[FlowNode] = []
 
     for c in courses:
-        year = c.get("year") or 1
+        year = c.get("grade") or 1
         idx = year_counter.get(year, 0)
         year_counter[year] = idx + 1
 
         nodes.append(
             FlowNode(
-                id=c["course_id"],
+                id=c["courseId"],
                 data=NodeData(
-                    label=c["name"],
+                    label=c["nameKr"],
                     year=year,
-                    course_type=c.get("course_type"),
+                    course_type=c.get("type"),
                     credits=c.get("credits"),
                 ),
                 position={"x": YEAR_X.get(year, 0), "y": idx * NODE_Y_GAP},
