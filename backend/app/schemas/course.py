@@ -42,7 +42,7 @@ class CurriculumGraphResponse(BaseModel):
     edges: list[FlowEdge]
 
 
-# 콘텐츠 추천
+# 콘텐츠 추천 (AI)
 class ContentItem(BaseModel):
     title: str
     url: str
@@ -54,3 +54,37 @@ class ContentsResponse(BaseModel):
     course_name: str
     contents: list[ContentItem]
     cached: bool
+
+
+# 자료 (Resources)
+class ResourceItem(BaseModel):
+    content_id: str
+    title: str
+    url: str
+    type: str        # "youtube" | "blog" | "강의자료" | "교재"
+    source: str      # "ai" | "user"
+    like_count: int = 0
+    dislike_count: int = 0
+
+
+class ResourceCreateRequest(BaseModel):
+    title: str
+    url: str
+    type: str
+    description: Optional[str] = None
+
+
+class ResourcesResponse(BaseModel):
+    course_id: str
+    resources: list[ResourceItem]
+
+
+# 피드백
+class FeedbackRequest(BaseModel):
+    action: str  # "like" | "dislike"
+
+
+class FeedbackResponse(BaseModel):
+    content_id: str
+    like_count: int
+    dislike_count: int

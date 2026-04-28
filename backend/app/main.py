@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import close_driver
-from app.routers import courses, contents
+from app.routers import courses, contents, resources
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ app.add_middleware(
 
 app.include_router(courses.router)
 app.include_router(contents.router)
+app.include_router(resources.router)
 
 
 @app.get("/", tags=["Health"])
