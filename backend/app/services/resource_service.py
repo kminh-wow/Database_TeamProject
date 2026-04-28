@@ -9,7 +9,7 @@ def get_resources(course_id: str) -> list[ResourceItem]:
     with get_session() as session:
         result = session.run(
             """
-            MATCH (c:Course {course_id: $course_id})-[:HAS_CONTENT]->(ct:Content)
+            MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
             RETURN ct
             ORDER BY ct.like_count DESC
             """,
@@ -37,7 +37,7 @@ def create_resource(course_id: str, data: ResourceCreateRequest) -> ResourceItem
     with get_session() as session:
         # 과목 존재 확인
         check = session.run(
-            "MATCH (c:Course {course_id: $course_id}) RETURN c",
+            "MATCH (c:Course {courseId: $course_id}) RETURN c",
             course_id=course_id,
         )
         if not check.single():
@@ -45,7 +45,7 @@ def create_resource(course_id: str, data: ResourceCreateRequest) -> ResourceItem
 
         session.run(
             """
-            MATCH (c:Course {course_id: $course_id})
+            MATCH (c:Course {courseId: $course_id})
             CREATE (ct:Content {
                 content_id: $content_id,
                 title: $title,
