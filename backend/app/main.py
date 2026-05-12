@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import close_driver
 from app.routers import courses, contents, resources
+from app.dependencies import get_current_user
 
 
 @asynccontextmanager
@@ -26,9 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(courses.router)
-app.include_router(contents.router)
-app.include_router(resources.router)
+auth_dep = [Depends(get_current_user)]
+
+app.include_router(courses.router, dependencies=auth_dep)
+app.include_router(contents.router, dependencies=auth_dep)
+app.include_router(resources.router, dependencies=auth_dep)
 
 
 @app.get("/", tags=["General"])

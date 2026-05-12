@@ -35,6 +35,7 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
 
 def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None:
     """AI가 생성한 콘텐츠를 Neo4j Content 노드로 저장"""
+    import uuid
     now = datetime.utcnow().isoformat()
     with get_session() as session:
         for item in contents:
@@ -42,14 +43,20 @@ def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None
                 """
                 MATCH (c:Course {courseId: $course_id})
                 MERGE (ct:Content {url: $url})
-                SET ct.title = $title, ct.type = $type, ct.generated_at = $generated_at
+                ON CREATE SET ct.content_id = $content_id,
+                              ct.source = 'ai',
+                              ct.like_count = 0,
+                              ct.dislike_count = 0,
+                              ct.created_at = $now
+                SET ct.title = $title, ct.type = $type, ct.generated_at = $now
                 MERGE (c)-[:HAS_CONTENT]->(ct)
                 """,
                 course_id=course_id,
+                content_id=str(uuid.uuid4()),
                 url=item.url,
                 title=item.title,
                 type=item.type,
-                generated_at=now,
+                now=now,
             )
 
 
