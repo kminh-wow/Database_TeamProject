@@ -41,14 +41,18 @@ def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None
             session.run(
                 """
                 MATCH (c:Course {courseId: $course_id})
-                MERGE (ct:Content {url: $url})
-                ON CREATE SET ct.content_id = $content_id,
-                              ct.source = 'ai',
-                              ct.like_count = 0,
-                              ct.dislike_count = 0,
-                              ct.created_at = $now
-                SET ct.title = $title, ct.type = $type, ct.generated_at = $now
-                MERGE (c)-[:HAS_CONTENT]->(ct)
+                CREATE (ct:Content {
+                    content_id: $content_id,
+                    title: $title,
+                    url: $url,
+                    type: $type,
+                    source: 'ai',
+                    like_count: 0,
+                    dislike_count: 0,
+                    created_at: $now,
+                    generated_at: $now
+                })
+                CREATE (c)-[:HAS_CONTENT]->(ct)
                 """,
                 course_id=course_id,
                 content_id=str(uuid.uuid4()),
