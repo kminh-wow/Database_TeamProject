@@ -1,1 +1,7 @@
-"backend/.claude/" 
+backend/.claude/
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.env
+backend/**/*.pyc
+backend/firebase-adminsdk.json
