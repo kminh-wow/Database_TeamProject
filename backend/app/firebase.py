@@ -1,6 +1,6 @@
 import os
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials, auth, firestore
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,3 +20,8 @@ def get_firebase_app():
 def verify_id_token(id_token: str) -> dict:
     get_firebase_app()
     return auth.verify_id_token(id_token)
+
+
+def get_firestore():
+    get_firebase_app()
+    return firestore.client()
