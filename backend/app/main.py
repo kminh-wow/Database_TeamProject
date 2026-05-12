@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import close_driver
-from app.routers import courses, contents, resources
+from app.routers import courses, contents, resources, folders
 from app.dependencies import get_current_user
 
 
@@ -32,6 +32,7 @@ auth_dep = [Depends(get_current_user)]
 app.include_router(courses.router, dependencies=auth_dep)
 app.include_router(contents.router, dependencies=auth_dep)
 app.include_router(resources.router, dependencies=auth_dep)
+app.include_router(folders.router, dependencies=auth_dep)
 
 
 @app.get("/", tags=["General"])
