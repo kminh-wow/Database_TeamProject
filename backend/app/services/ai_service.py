@@ -1,28 +1,29 @@
 import os
 import json
+import uuid
 from datetime import datetime
-import anthropic
+from groq import Groq
 from app.database import get_session
 from app.schemas.course import ContentItem, ContentsResponse
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "llama-3.3-70b-versatile"
 
-_client: anthropic.Anthropic | None = None
+_client: Groq | None = None
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> Groq:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        _client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     return _client
 
 
 def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
-    """Neo4j에 캐싱된 Content 노드가 있으면 반환, 없으면 None"""
     with get_session() as session:
         result = session.run(
             """
             MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
+            WHERE ct.source = 'ai'
             RETURN ct.title AS title, ct.url AS url, ct.type AS type
             """,
             course_id=course_id,
@@ -34,8 +35,6 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
 
 
 def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None:
-    """AI가 생성한 콘텐츠를 Neo4j Content 노드로 저장"""
-    import uuid
     now = datetime.utcnow().isoformat()
     with get_session() as session:
         for item in contents:
@@ -61,7 +60,6 @@ def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None
 
 
 def _call_ai(course_name: str, description: str | None) -> list[ContentItem]:
-    """Claude API로 학습 콘텐츠 추천 요청"""
     prompt = f"""다음 대학 교과목에 적합한 학습 콘텐츠를 추천해줘.
 
 교과목명: {course_name}
@@ -76,21 +74,23 @@ def _call_ai(course_name: str, description: str | None) -> list[ContentItem]:
 
 type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
 
-    message = _get_client().messages.create(
+    response = _get_client().chat.completions.create(
         model=MODEL,
-        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
     )
+    raw = response.choices[0].message.content.strip()
 
-    raw = message.content[0].text.strip()
-    # JSON 파싱
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+
     data = json.loads(raw)
     return [ContentItem(**item) for item in data]
 
 
 def get_contents_for_course(course_id: str) -> ContentsResponse:
-    """캐시 확인 → 없으면 AI 호출 → Neo4j 저장 → 반환"""
-    # 과목 정보 조회
     with get_session() as session:
         result = session.run(
             "MATCH (c:Course {courseId: $course_id}) RETURN c.nameKr AS name, c.descKr AS description",
@@ -102,7 +102,6 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
         course_name = record["name"]
         description = record.get("description")
 
-    # 캐시 확인
     cached = _fetch_cached_contents(course_id)
     if cached:
         return ContentsResponse(
@@ -112,10 +111,7 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
             cached=True,
         )
 
-    # AI 호출
     contents = _call_ai(course_name, description)
-
-    # Neo4j에 저장
     _save_contents_to_neo4j(course_id, contents)
 
     return ContentsResponse(
