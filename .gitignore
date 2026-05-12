@@ -5,3 +5,4 @@ backend/**/__pycache__/
 backend/.env
 backend/**/*.pyc
 backend/firebase-adminsdk.json
+CLAUDE.md
