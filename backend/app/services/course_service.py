@@ -16,8 +16,10 @@ NODE_Y_GAP = 120
 
 def get_departments() -> list[DepartmentResponse]:
     with get_session() as session:
-        result = session.run("MATCH (d:Department) RETURN d.name AS name ORDER BY d.name")
-        return [DepartmentResponse(name=r["name"]) for r in result]
+        result = session.run(
+            "MATCH (d:Department) RETURN d.name AS name, d.collegeName AS college_name ORDER BY d.name"
+        )
+        return [DepartmentResponse(name=r["name"], college_name=r["college_name"]) for r in result]
 
 
 def search_courses(keyword: str) -> list[CourseResponse]:
@@ -39,6 +41,7 @@ def search_courses(keyword: str) -> list[CourseResponse]:
                 name=c["c"]["nameKr"],
                 name_en=c["c"].get("nameEn"),
                 year=c["c"].get("grade"),
+                semester=c["c"].get("semester"),
                 course_type=c["c"].get("type"),
                 credits=c["c"].get("credits"),
                 hours=c["c"].get("hours"),
@@ -80,6 +83,7 @@ def get_course(course_id: str) -> CourseResponse | None:
             name=c["nameKr"],
             name_en=c.get("nameEn"),
             year=c.get("grade"),
+            semester=c.get("semester"),
             course_type=c.get("type"),
             credits=c.get("credits"),
             hours=c.get("hours"),
