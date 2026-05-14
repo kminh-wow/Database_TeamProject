@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from app.database import get_session
+from app.firebase import get_firestore
 from app.schemas.course import ResourceItem, ResourceCreateRequest, FeedbackResponse
 
 
@@ -101,28 +102,52 @@ def delete_resource(content_id: str, uid: str) -> None:
         )
 
 
-def add_feedback(content_id: str, action: str) -> FeedbackResponse:
-    """좋아요 / 싫어요 카운트 업데이트"""
+def add_feedback(content_id: str, action: str, uid: str) -> FeedbackResponse:
+    """좋아요 / 싫어요 - 사용자별 중복 방지, 반대 의견으로 변경 가능"""
     if action not in ("like", "dislike"):
         raise ValueError("action은 'like' 또는 'dislike' 이어야 합니다.")
 
-    field = "like_count" if action == "like" else "dislike_count"
+    db = get_firestore()
+    feedback_ref = db.collection("content_feedback").document(f"{uid}_{content_id}")
+    existing = feedback_ref.get()
+    prev_action = existing.to_dict().get("action") if existing.exists else None
+
+    if prev_action == action:
+        raise ValueError(f"이미 {action}를 눌렀습니다.")
 
     with get_session() as session:
-        result = session.run(
-            f"""
-            MATCH (ct:Content {{content_id: $content_id}})
-            SET ct.{field} = coalesce(ct.{field}, 0) + 1
-            RETURN ct.like_count AS like_count, ct.dislike_count AS dislike_count
-            """,
-            content_id=content_id,
-        )
+        if prev_action:
+            # 이전 반응 취소 후 새 반응 적용
+            prev_field = "like_count" if prev_action == "like" else "dislike_count"
+            new_field = "like_count" if action == "like" else "dislike_count"
+            result = session.run(
+                f"""
+                MATCH (ct:Content {{content_id: $content_id}})
+                SET ct.{prev_field} = coalesce(ct.{prev_field}, 0) - 1,
+                    ct.{new_field} = coalesce(ct.{new_field}, 0) + 1
+                RETURN ct.like_count AS like_count, ct.dislike_count AS dislike_count
+                """,
+                content_id=content_id,
+            )
+        else:
+            new_field = "like_count" if action == "like" else "dislike_count"
+            result = session.run(
+                f"""
+                MATCH (ct:Content {{content_id: $content_id}})
+                SET ct.{new_field} = coalesce(ct.{new_field}, 0) + 1
+                RETURN ct.like_count AS like_count, ct.dislike_count AS dislike_count
+                """,
+                content_id=content_id,
+            )
+
         record = result.single()
         if not record:
             raise ValueError(f"content_id '{content_id}' 를 찾을 수 없습니다.")
 
-        return FeedbackResponse(
-            content_id=content_id,
-            like_count=record["like_count"],
-            dislike_count=record["dislike_count"],
-        )
+    feedback_ref.set({"action": action, "updated_at": datetime.utcnow().isoformat()})
+
+    return FeedbackResponse(
+        content_id=content_id,
+        like_count=record["like_count"],
+        dislike_count=record["dislike_count"],
+    )

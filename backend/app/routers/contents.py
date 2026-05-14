@@ -14,3 +14,10 @@ def get_contents(course_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"콘텐츠 추천 오류: {str(e)}")
+
+
+@router.delete("/courses/{course_id}/contents", status_code=200)
+def reset_ai_contents(course_id: str):
+    """AI 추천 콘텐츠 캐시 초기화"""
+    deleted = ai_service.delete_cached_contents(course_id)
+    return {"course_id": course_id, "deleted": deleted}
