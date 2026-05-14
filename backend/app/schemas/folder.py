@@ -6,6 +6,10 @@ class FolderCreate(BaseModel):
     name: str
 
 
+class FolderUpdate(BaseModel):
+    name: str
+
+
 class FolderResponse(BaseModel):
     folder_id: str
     name: str

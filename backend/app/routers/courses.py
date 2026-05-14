@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.schemas.course import DepartmentResponse, CourseResponse, CurriculumGraphResponse
 from app.services import course_service
 
@@ -8,7 +8,16 @@ router = APIRouter(prefix="/api", tags=["Courses"])
 @router.get("/departments", response_model=list[DepartmentResponse])
 def list_departments():
     """학과 목록 조회"""
-    return course_service.get_departments()
+    try:
+        return course_service.get_departments()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"학과 목록 조회 오류: {str(e)}")
+
+
+@router.get("/courses", response_model=list[CourseResponse])
+def search_courses(search: str = Query(..., min_length=1, description="검색 키워드")):
+    """과목 이름으로 검색 (국문/영문)"""
+    return course_service.search_courses(search)
 
 
 @router.get("/curriculum/{department_name}", response_model=CurriculumGraphResponse)

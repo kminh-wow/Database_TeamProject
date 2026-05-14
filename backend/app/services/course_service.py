@@ -19,6 +19,34 @@ def get_departments() -> list[DepartmentResponse]:
         return [DepartmentResponse(name=r["name"]) for r in result]
 
 
+def search_courses(keyword: str) -> list[CourseResponse]:
+    with get_session() as session:
+        result = session.run(
+            """
+            MATCH (c:Course)
+            WHERE toLower(c.nameKr) CONTAINS toLower($keyword)
+               OR toLower(c.nameEn) CONTAINS toLower($keyword)
+            RETURN c
+            ORDER BY c.nameKr
+            LIMIT 30
+            """,
+            keyword=keyword,
+        )
+        return [
+            CourseResponse(
+                course_id=c["c"]["courseId"],
+                name=c["c"]["nameKr"],
+                name_en=c["c"].get("nameEn"),
+                year=c["c"].get("grade"),
+                course_type=c["c"].get("type"),
+                credits=c["c"].get("credits"),
+                hours=c["c"].get("hours"),
+                description=c["c"].get("descKr"),
+            )
+            for c in result
+        ]
+
+
 def get_course(course_id: str) -> CourseResponse | None:
     with get_session() as session:
         result = session.run(
