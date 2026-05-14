@@ -39,9 +39,9 @@ def delete_resource(content_id: str, user=Depends(get_current_user)):
 
 
 @router.post("/resources/{content_id}/feedback", response_model=FeedbackResponse)
-def add_feedback(content_id: str, body: FeedbackRequest):
-    """좋아요 / 싫어요"""
+def add_feedback(content_id: str, body: FeedbackRequest, user=Depends(get_current_user)):
+    """좋아요 / 싫어요 (중복 불가, 반대 의견으로 변경 가능)"""
     try:
-        return resource_service.add_feedback(content_id, body.action)
+        return resource_service.add_feedback(content_id, body.action, user["uid"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

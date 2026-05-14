@@ -94,6 +94,27 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
     return [ContentItem(**item) for item in data]
 
 
+def delete_cached_contents(course_id: str) -> int:
+    with get_session() as session:
+        count_result = session.run(
+            """
+            MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content {source: 'ai'})
+            RETURN count(ct) AS cnt
+            """,
+            course_id=course_id,
+        )
+        cnt = count_result.single()["cnt"]
+        if cnt > 0:
+            session.run(
+                """
+                MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content {source: 'ai'})
+                DETACH DELETE ct
+                """,
+                course_id=course_id,
+            )
+        return cnt
+
+
 def get_contents_for_course(course_id: str) -> ContentsResponse:
     with get_session() as session:
         result = session.run(
