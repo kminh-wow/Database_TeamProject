@@ -4,9 +4,10 @@ from typing import Optional
 
 class DepartmentResponse(BaseModel):
     model_config = ConfigDict(json_schema_extra={
-        "example": {"name": "AI소프트웨어학부"}
+        "example": {"name": "AI소프트웨어학부", "college_name": "AI대학"}
     })
     name: str
+    college_name: Optional[str] = None
 
 
 class CourseRef(BaseModel):
@@ -35,6 +36,7 @@ class CourseResponse(BaseModel):
     name: str
     name_en: Optional[str] = None
     year: Optional[int] = None
+    semester: Optional[str] = None
     course_type: Optional[str] = None
     credits: Optional[int] = None
     hours: Optional[int] = None
