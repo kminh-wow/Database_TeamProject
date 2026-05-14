@@ -54,14 +54,42 @@ API 문서 → `http://127.0.0.1:8000/docs`
 
 ## 주요 API
 
+**Courses**
+
 | Method | 경로 | 설명 |
 |--------|------|------|
 | GET | `/api/departments` | 학과 목록 |
 | GET | `/api/curriculum/{department_name}` | 커리큘럼 그래프 (React Flow) |
+| GET | `/api/courses` | 과목 검색 (`?search=키워드`) |
 | GET | `/api/courses/{course_id}` | 과목 상세 |
-| GET | `/api/courses/{course_id}/resources` | 학습 자료 목록 |
+
+**Resources** (인증 필요)
+
+| Method | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/courses/{course_id}/resources` | 학습 자료 목록 (좋아요 순) |
 | POST | `/api/courses/{course_id}/resources` | 학습 자료 등록 |
+| DELETE | `/api/resources/{content_id}` | 학습 자료 삭제 (등록자 본인) |
 | POST | `/api/resources/{content_id}/feedback` | 좋아요 / 싫어요 |
+
+**Contents (AI 추천)**
+
+| Method | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/courses/{course_id}/contents` | AI 추천 콘텐츠 (캐시 우선) |
+| DELETE | `/api/courses/{course_id}/contents` | AI 추천 캐시 초기화 |
+
+**Folders** (인증 필요)
+
+| Method | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/folders` | 내 폴더 목록 |
+| POST | `/api/folders` | 폴더 생성 |
+| PATCH | `/api/folders/{folder_id}` | 폴더 이름 변경 |
+| DELETE | `/api/folders/{folder_id}` | 폴더 삭제 |
+| GET | `/api/folders/{folder_id}/items` | 폴더 내 자료 목록 |
+| POST | `/api/folders/{folder_id}/items` | 폴더에 자료 추가 |
+| DELETE | `/api/folders/{folder_id}/items/{content_id}` | 폴더에서 자료 제거 |
 
 ---
 
