@@ -6,6 +6,11 @@ class DepartmentResponse(BaseModel):
     name: str
 
 
+class CourseRef(BaseModel):
+    course_id: str
+    name: str
+
+
 class CourseResponse(BaseModel):
     course_id: str
     name: str
@@ -15,6 +20,8 @@ class CourseResponse(BaseModel):
     credits: Optional[int] = None
     hours: Optional[int] = None
     description: Optional[str] = None
+    prerequisites: list[CourseRef] = []
+    successors: list[CourseRef] = []
 
 
 # React Flow용 노드/엣지

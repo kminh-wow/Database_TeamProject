@@ -2,6 +2,7 @@ from app.database import get_session
 from app.schemas.course import (
     DepartmentResponse,
     CourseResponse,
+    CourseRef,
     CurriculumGraphResponse,
     FlowNode,
     FlowEdge,
@@ -50,13 +51,30 @@ def search_courses(keyword: str) -> list[CourseResponse]:
 def get_course(course_id: str) -> CourseResponse | None:
     with get_session() as session:
         result = session.run(
-            "MATCH (c:Course {courseId: $course_id}) RETURN c",
+            """
+            MATCH (c:Course {courseId: $course_id})
+            OPTIONAL MATCH (pre:Course)-[:PREREQUISITE_OF]->(c)
+            OPTIONAL MATCH (c)-[:PREREQUISITE_OF]->(suc:Course)
+            RETURN c,
+                   collect(DISTINCT {courseId: pre.courseId, nameKr: pre.nameKr}) AS prerequisites,
+                   collect(DISTINCT {courseId: suc.courseId, nameKr: suc.nameKr}) AS successors
+            """,
             course_id=course_id,
         )
         record = result.single()
         if not record:
             return None
         c = record["c"]
+        prerequisites = [
+            CourseRef(course_id=p["courseId"], name=p["nameKr"])
+            for p in record["prerequisites"]
+            if p["courseId"] is not None
+        ]
+        successors = [
+            CourseRef(course_id=s["courseId"], name=s["nameKr"])
+            for s in record["successors"]
+            if s["courseId"] is not None
+        ]
         return CourseResponse(
             course_id=c["courseId"],
             name=c["nameKr"],
@@ -66,6 +84,8 @@ def get_course(course_id: str) -> CourseResponse | None:
             credits=c.get("credits"),
             hours=c.get("hours"),
             description=c.get("descKr"),
+            prerequisites=prerequisites,
+            successors=successors,
         )
 
 
