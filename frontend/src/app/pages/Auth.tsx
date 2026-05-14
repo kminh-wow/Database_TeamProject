@@ -83,10 +83,10 @@ export default function Auth() {
 
             <div className="p-8">
               <div className="mb-8 text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                  style={{ background: '#EBF5F5' }}>
-                  <Logo className="w-10 h-10" />
+                <div className="flex justify-center">
+                  <Logo className="w-16 h-16" />
                 </div>
+
                 <h1 className="text-2xl font-bold">
                   {mode === 'login' ? '다시 만나요 👋' : 'CourseNest에 오신걸 환영해요 🎉'}
                 </h1>

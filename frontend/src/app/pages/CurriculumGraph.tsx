@@ -17,33 +17,80 @@ import { toast } from 'sonner'
 function getRelatedIds(selectedId: string, edges: Edge[]): Set<string> {
   const related = new Set<string>([selectedId])
   const findAncestors = (id: string) => {
-    edges.forEach(e => { if (e.target === id && !related.has(e.source)) { related.add(e.source); findAncestors(e.source) } })
+    edges.forEach(e => {
+      if (e.target === id && !related.has(e.source)) {
+        related.add(e.source)
+        findAncestors(e.source)
+      }
+    })
   }
   const findDescendants = (id: string) => {
-    edges.forEach(e => { if (e.source === id && !related.has(e.target)) { related.add(e.target); findDescendants(e.target) } })
+    edges.forEach(e => {
+      if (e.source === id && !related.has(e.target)) {
+        related.add(e.target)
+        findDescendants(e.target)
+      }
+    })
   }
   findAncestors(selectedId)
   findDescendants(selectedId)
   return related
 }
 
+function computeGridPositions(apiNodes: ApiFlowNode[]) {
+  const YEAR_BASE_X: Record<number, number> = { 1: 0, 2: 620, 3: 1240, 4: 1860 }
+  const COLS = 3
+  const NODE_W = 180
+  const NODE_H = 70
+  const H_GAP = 20
+  const V_GAP = 16
+
+  const byYear: Record<number, ApiFlowNode[]> = {}
+  apiNodes.forEach(n => {
+    const year = n.data.year || 1
+    if (!byYear[year]) byYear[year] = []
+    byYear[year].push(n)
+  })
+
+  const positions = new Map<string, { x: number; y: number }>()
+  Object.entries(byYear).forEach(([yearStr, nodes]) => {
+    const year = parseInt(yearStr)
+    const baseX = YEAR_BASE_X[year] ?? (year - 1) * 620
+    nodes.forEach((n, i) => {
+      const col = i % COLS
+      const row = Math.floor(i / COLS)
+      positions.set(n.id, {
+        x: baseX + col * (NODE_W + H_GAP),
+        y: row * (NODE_H + V_GAP),
+      })
+    })
+  })
+  return positions
+}
+
 const yearColors: Record<number, { bg: string; border: string }> = {
-  1: { bg: '#FEF3C7', border: '#F59E0B' },
-  2: { bg: '#DBEAFE', border: '#3B82F6' },
-  3: { bg: '#D1FAE5', border: '#10B981' },
-  4: { bg: '#FCE7F3', border: '#EC4899' },
+  1: { bg: '#FEF9EC', border: '#F5A623' },
+  2: { bg: '#EBF3FF', border: '#4A90D9' },
+  3: { bg: '#EAFAF1', border: '#27AE60' },
+  4: { bg: '#FDE8F0', border: '#E91E8C' },
 }
 
 const courseTypeColors: Record<string, string> = {
-  '전공필수': '#DC2626',
-  '전공기초': '#2563EB',
-  '전공선택': '#059669',
+  '전공필수': '#E53E3E',
+  '전공기초': '#3182CE',
+  '전공선택': '#38A169',
+}
+
+const courseTypeLabels: Record<string, string> = {
+  '전공필수': '전필',
+  '전공기초': '핵심',
+  '전공선택': '심화',
 }
 
 export default function CurriculumGraph() {
   const { departmentId } = useParams<{ departmentId: string }>()
   const navigate = useNavigate()
-  const { savedResources } = useApp()
+  const { user } = useApp()
 
   const [baseNodes, setBaseNodes] = useState<Node[]>([])
   const [baseEdges, setBaseEdges] = useState<Edge[]>([])
@@ -60,39 +107,58 @@ export default function CurriculumGraph() {
 
     getCurriculumGraph(name)
       .then(({ nodes: apiNodes, edges: apiEdges }) => {
-        const savedCourseIds = new Set(savedResources.map(s => s.courseId))
+        const gridPos = computeGridPositions(apiNodes)
 
-        const nodes: Node[] = apiNodes.map((n: ApiFlowNode) => {
-          const year = n.data.year || 1
-          const yc = yearColors[year] || yearColors[1]
-          const bc = courseTypeColors[n.data.course_type || ''] || '#6B7280'
+        const nodes: Node[] = apiNodes
+          .filter((n: ApiFlowNode) =>
+            n.position &&
+            n.position.x !== undefined &&
+            n.position.y !== undefined
+          )
+          .map((n: ApiFlowNode) => {
+            const year = n.data.year || 1
+            const yc = yearColors[year] || yearColors[1]
+            const bc = courseTypeColors[n.data.course_type || ''] || '#6B7280'
+            const pos = gridPos.get(n.id) || n.position
 
-          return {
-            id: n.id,
-            type: 'default',
-            data: {
-              label: (
-                <div className="text-center select-none">
-                  {savedCourseIds.has(n.id) && <div className="text-xs mb-1">⭐</div>}
-                  <div className="text-sm leading-tight font-bold text-gray-900">{n.data.label}</div>
-                  {n.data.credits && <div className="text-xs mt-1 text-gray-500">{n.data.credits}학점</div>}
-                </div>
-              ),
-            },
-            position: n.position,
-            style: {
-              background: yc.bg, border: `3px solid ${bc}`, borderRadius: '14px',
-              padding: '14px 10px', width: 200, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', cursor: 'pointer',
-            },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-            draggable: false,
-          }
-        })
+            return {
+              id: n.id,
+              type: 'default',
+              data: {
+                label: (
+                  <div className="text-center select-none">
+                    <div className="text-xs font-bold text-gray-900 leading-tight">
+                      {n.data.label}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+                      {n.id}
+                    </div>
+                  </div>
+                ),
+              },
+              position: pos,
+              style: {
+                background: yc.bg,
+                border: `2px solid ${bc}`,
+                borderRadius: '10px',
+                padding: '8px 6px',
+                width: 160,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
+                cursor: 'pointer',
+              },
+              sourcePosition: Position.Right,
+              targetPosition: Position.Left,
+              draggable: false,
+            }
+          })
 
         const edges: Edge[] = apiEdges.map(e => ({
-          id: e.id, source: e.source, target: e.target, type: 'smoothstep', animated: true,
-          style: { stroke: '#6B9FA1', strokeWidth: 2 },
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: '#6B9FA1', strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: '#6B9FA1' },
         }))
 
@@ -110,10 +176,12 @@ export default function CurriculumGraph() {
       ...node,
       style: {
         ...node.style,
-        opacity: related.has(node.id) ? 1 : 0.22,
+        opacity: related.has(node.id) ? 1 : 0.2,
         boxShadow: node.id === highlightedId
-          ? '0 0 0 3px #6B9FA1, 0 0 20px rgba(107,159,161,0.5)'
-          : related.has(node.id) ? '0 4px 14px rgba(0,0,0,0.18)' : 'none',
+          ? '0 0 0 3px #6B9FA1, 0 0 16px rgba(107,159,161,0.5)'
+          : related.has(node.id)
+            ? '0 4px 12px rgba(0,0,0,0.15)'
+            : 'none',
       },
     }))
   }, [baseNodes, highlightedId, baseEdges])
@@ -125,16 +193,25 @@ export default function CurriculumGraph() {
       const isRel = related.has(e.source) && related.has(e.target)
       return {
         ...e,
-        style: { stroke: isRel ? '#6B9FA1' : '#4B5563', strokeWidth: isRel ? 3 : 1, opacity: isRel ? 1 : 0.15 },
+        style: {
+          stroke: isRel ? '#6B9FA1' : '#4B5563',
+          strokeWidth: isRel ? 2.5 : 1,
+          opacity: isRel ? 1 : 0.1,
+        },
         animated: isRel,
-        markerEnd: { type: MarkerType.ArrowClosed, color: isRel ? '#6B9FA1' : '#4B5563' },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: isRel ? '#6B9FA1' : '#4B5563',
+        },
       }
     })
   }, [baseEdges, highlightedId])
 
   const onNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
-    // 노드 id로 course 정보 구성 (상세는 CourseModal에서 API 호출)
-    setSelectedCourse({ course_id: node.id, name: node.data.label?.props?.children?.[1]?.props?.children || node.id })
+    setSelectedCourse({
+      course_id: node.id,
+      name: String(node.data?.label?.props?.children?.[0]?.props?.children || node.id),
+    })
   }, [])
 
   const onNodeMouseEnter = useCallback((_e: React.MouseEvent, node: Node) => {
@@ -148,16 +225,23 @@ export default function CurriculumGraph() {
 
   return (
     <div className="h-screen w-full flex flex-col" style={{ background: '#0F172A' }}>
+      {/* 헤더 */}
       <div className="border-b border-slate-800 px-5 py-3 flex items-center justify-between bg-slate-900">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate('/')} className="h-9 w-9 p-0 text-white hover:bg-slate-800">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+            className="h-9 w-9 p-0 text-white hover:bg-slate-800"
+          >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-2.5">
             <Logo className="w-6 h-6" />
             <div>
               <h1 className="text-sm text-white font-bold">{deptName}</h1>
-              <p className="text-xs text-slate-400">과목에 커서를 올리면 선후수 확인 · 클릭 시 학습 자료</p>
+              <p className="text-xs text-slate-400">
+                과목에 커서를 올리면 선후수 관계 확인 · 클릭 시 학습 자료
+              </p>
             </div>
           </div>
         </div>
@@ -167,29 +251,40 @@ export default function CurriculumGraph() {
             <div className="flex items-center gap-2 text-xs text-slate-400">
               {Object.entries(yearColors).map(([year, c]) => (
                 <div key={year} className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-sm" style={{ background: c.bg, border: `1.5px solid ${c.border}` }} />
+                  <div
+                    className="w-3 h-3 rounded-sm"
+                    style={{ background: c.bg, border: `1.5px solid ${c.border}` }}
+                  />
                   <span>{year}학년</span>
                 </div>
               ))}
             </div>
             <div className="w-px h-4 bg-slate-700" />
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              {Object.entries(courseTypeColors).map(([label, color]) => (
-                <div key={label} className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-sm border-2" style={{ borderColor: color }} />
-                  <span>{label}</span>
+              {Object.entries(courseTypeColors).map(([type, color]) => (
+                <div key={type} className="flex items-center gap-1">
+                  <div
+                    className="w-3 h-3 rounded-full border-2"
+                    style={{ borderColor: color }}
+                  />
+                  <span>{courseTypeLabels[type]}</span>
                 </div>
               ))}
             </div>
           </div>
-          <Button variant="ghost" onClick={() => navigate('/study-room')}
-            className="h-9 text-slate-300 hover:text-white hover:bg-slate-800 gap-1.5 text-xs">
+
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/study-room')}
+            className="h-9 text-slate-300 hover:text-white hover:bg-slate-800 gap-1.5 text-xs"
+          >
             <BookMarked className="w-4 h-4" style={{ color: '#6B9FA1' }} />
             <span className="hidden sm:inline">My Study Room</span>
           </Button>
         </div>
       </div>
 
+      {/* 그래프 영역 */}
       <div className="flex-1 relative">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -200,19 +295,34 @@ export default function CurriculumGraph() {
           </div>
         )}
         <ReactFlow
-          nodes={displayNodes} edges={displayEdges}
+          nodes={displayNodes}
+          edges={displayEdges}
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
-          fitView fitViewOptions={{ padding: 0.15 }}
-          nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
-          attributionPosition="bottom-left" minZoom={0.2} maxZoom={2}
+          fitView
+          fitViewOptions={{ padding: 0.15 }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          attributionPosition="bottom-left"
+          minZoom={0.1}
+          maxZoom={2}
         >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#334155" />
-          <Controls className="bg-slate-800 border-slate-700" showInteractive={false} />
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1}
+            color="#334155"
+          />
+          <Controls
+            className="bg-slate-800 border-slate-700"
+            showInteractive={false}
+          />
           <MiniMap
             nodeColor={node => {
-              const year = baseNodes.find(n => n.id === node.id)?.data?.year || 1
+              const n = baseNodes.find(bn => bn.id === node.id)
+              const year = n?.data?.year || 1
               return yearColors[year]?.border || '#6B9FA1'
             }}
             style={{ background: '#1E293B' }}
@@ -221,7 +331,10 @@ export default function CurriculumGraph() {
       </div>
 
       {selectedCourse && (
-        <CourseModal course={selectedCourse} onClose={() => setSelectedCourse(null)} />
+        <CourseModal
+          course={selectedCourse}
+          onClose={() => setSelectedCourse(null)}
+        />
       )}
     </div>
   )
