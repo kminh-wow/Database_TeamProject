@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from app.firebase import get_firestore
-from app.schemas.folder import FolderCreate, FolderItemCreate, FolderResponse, FolderItemResponse
+from app.schemas.folder import FolderCreate, FolderUpdate, FolderItemCreate, FolderResponse, FolderItemResponse
 
 
 def _folders_ref(uid: str):
@@ -24,6 +24,17 @@ def get_folders(uid: str) -> list[FolderResponse]:
         item_count = len(list(doc.reference.collection("items").stream()))
         result.append(FolderResponse(**data, item_count=item_count))
     return result
+
+
+def rename_folder(uid: str, folder_id: str, data: FolderUpdate) -> FolderResponse:
+    folder_ref = _folders_ref(uid).document(folder_id)
+    doc = folder_ref.get()
+    if not doc.exists:
+        raise ValueError("폴더를 찾을 수 없습니다.")
+    folder_ref.update({"name": data.name})
+    updated = {**doc.to_dict(), "name": data.name}
+    item_count = len(list(folder_ref.collection("items").stream()))
+    return FolderResponse(**updated, item_count=item_count)
 
 
 def delete_folder(uid: str, folder_id: str) -> None:

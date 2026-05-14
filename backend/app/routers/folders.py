@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.dependencies import get_current_user
-from app.schemas.folder import FolderCreate, FolderResponse, FolderItemCreate, FolderItemResponse
+from app.schemas.folder import FolderCreate, FolderUpdate, FolderResponse, FolderItemCreate, FolderItemResponse
 from app.services import folder_service
 
 router = APIRouter(prefix="/api/folders", tags=["Folders"])
@@ -14,6 +14,14 @@ def create_folder(body: FolderCreate, user=Depends(get_current_user)):
 @router.get("", response_model=list[FolderResponse])
 def list_folders(user=Depends(get_current_user)):
     return folder_service.get_folders(user["uid"])
+
+
+@router.patch("/{folder_id}", response_model=FolderResponse)
+def rename_folder(folder_id: str, body: FolderUpdate, user=Depends(get_current_user)):
+    try:
+        return folder_service.rename_folder(user["uid"], folder_id, body)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.delete("/{folder_id}", status_code=204)
