@@ -10,7 +10,7 @@ from app.schemas.course import (
 )
 
 # 학년별 x 좌표 (React Flow 레이아웃)
-YEAR_X = {1: 0, 2: 350, 3: 700, 4: 1050}
+YEAR_X = {1: 0, 2: 350, 3: 700, 4: 1050, 5: 1400}
 NODE_Y_GAP = 120
 
 
