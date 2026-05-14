@@ -22,6 +22,7 @@ def get_resources(course_id: str) -> list[ResourceItem]:
                 url=r["ct"]["url"],
                 type=r["ct"]["type"],
                 source=r["ct"].get("source", "user"),
+                description=r["ct"].get("description"),
                 like_count=r["ct"].get("like_count", 0),
                 dislike_count=r["ct"].get("dislike_count", 0),
             )
@@ -29,13 +30,12 @@ def get_resources(course_id: str) -> list[ResourceItem]:
         ]
 
 
-def create_resource(course_id: str, data: ResourceCreateRequest) -> ResourceItem:
+def create_resource(course_id: str, data: ResourceCreateRequest, uid: str) -> ResourceItem:
     """자료 등록 - Content 노드 생성 후 과목과 연결"""
     content_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
     with get_session() as session:
-        # 과목 존재 확인
         check = session.run(
             "MATCH (c:Course {courseId: $course_id}) RETURN c",
             course_id=course_id,
@@ -51,7 +51,9 @@ def create_resource(course_id: str, data: ResourceCreateRequest) -> ResourceItem
                 title: $title,
                 url: $url,
                 type: $type,
+                description: $description,
                 source: 'user',
+                created_by: $uid,
                 like_count: 0,
                 dislike_count: 0,
                 created_at: $created_at
@@ -63,6 +65,8 @@ def create_resource(course_id: str, data: ResourceCreateRequest) -> ResourceItem
             title=data.title,
             url=data.url,
             type=data.type,
+            description=data.description,
+            uid=uid,
             created_at=now,
         )
 
@@ -71,10 +75,30 @@ def create_resource(course_id: str, data: ResourceCreateRequest) -> ResourceItem
         title=data.title,
         url=data.url,
         type=data.type,
+        description=data.description,
         source="user",
         like_count=0,
         dislike_count=0,
     )
+
+
+def delete_resource(content_id: str, uid: str) -> None:
+    """자료 삭제 - 등록자 본인만 가능"""
+    with get_session() as session:
+        result = session.run(
+            "MATCH (ct:Content {content_id: $content_id}) RETURN ct.created_by AS created_by",
+            content_id=content_id,
+        )
+        record = result.single()
+        if not record:
+            raise ValueError(f"content_id '{content_id}' 를 찾을 수 없습니다.")
+        if record["created_by"] != uid:
+            raise PermissionError("본인이 등록한 자료만 삭제할 수 있습니다.")
+
+        session.run(
+            "MATCH (ct:Content {content_id: $content_id}) DETACH DELETE ct",
+            content_id=content_id,
+        )
 
 
 def add_feedback(content_id: str, action: str) -> FeedbackResponse:

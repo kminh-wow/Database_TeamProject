@@ -63,6 +63,7 @@ class ResourceItem(BaseModel):
     url: str
     type: str        # "youtube" | "blog" | "강의자료" | "교재"
     source: str      # "ai" | "user"
+    description: Optional[str] = None
     like_count: int = 0
     dislike_count: int = 0
 
