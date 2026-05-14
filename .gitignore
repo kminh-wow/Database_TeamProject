@@ -8,4 +8,8 @@ backend/firebase-adminsdk.json
 CLAUDE.md
 frontend/node_modules/
 frontend/.env
+<<<<<<< Updated upstream
 frontend/dist/
+=======
+frontend/dist/
+>>>>>>> Stashed changes
