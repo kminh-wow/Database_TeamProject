@@ -21,7 +21,7 @@ interface AppContextType {
   // Folder (API-based)
   folders: Folder[]
   foldersLoading: boolean
-  createFolder: (name: string) => Promise<void>
+  createFolder: (name: string) => Promise<Folder>
   deleteFolder: (folderId: string) => Promise<void>
   saveResource: (folderId: string, courseId: string, courseName: string, resource: ResourceItem) => Promise<void>
   unsaveResource: (folderId: string, contentId: string) => Promise<void>
@@ -94,9 +94,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFolders([])
   }
 
-  const createFolder = async (name: string) => {
+  const createFolder = async (name: string): Promise<Folder> => {
     const folder = await foldersApi.createFolder(name)
     setFolders(prev => [...prev, folder])
+    return folder
   }
 
   const deleteFolder = async (folderId: string) => {

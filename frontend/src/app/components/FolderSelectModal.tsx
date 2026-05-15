@@ -36,14 +36,12 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
     if (!newFolderName.trim()) { toast.error('폴더 이름을 입력해주세요'); return }
     setSaving(true)
     try {
-      await createFolder(newFolderName.trim())
-      // 방금 만든 폴더 id는 refreshFolders 후 folders에 들어있음
-      // 폴더 생성 성공 후 바로 저장은 folders 최신화 후 해야 하므로 안내만
-      toast.success(`"${newFolderName}" 폴더를 만들었습니다. 다시 선택해주세요.`)
-      setNewFolderName('')
-      setShowCreate(false)
+      const folder = await createFolder(newFolderName.trim())
+      await saveResource(folder.folder_id, courseId, courseName, resource)
+      toast.success(`"${newFolderName}"에 저장되었습니다!`)
+      onClose()
     } catch {
-      toast.error('폴더 생성에 실패했습니다.')
+      toast.error('폴더 생성 또는 저장에 실패했습니다.')
     } finally {
       setSaving(false)
     }

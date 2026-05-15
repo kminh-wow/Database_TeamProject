@@ -78,11 +78,12 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
     }
   }
 
+  const netScore = (x: { like_count: number; dislike_count: number }) => x.like_count - x.dislike_count
   const sortedAi = [...aiContents].sort((a, b) =>
-    sort === 'likes' ? b.like_count - a.like_count : b.like_count - a.like_count
+    sort === 'likes' ? b.like_count - a.like_count : netScore(b) - netScore(a)
   )
   const sortedUser = [...userResources].sort((a, b) =>
-    sort === 'likes' ? b.like_count - a.like_count : b.like_count - a.like_count
+    sort === 'likes' ? b.like_count - a.like_count : netScore(b) - netScore(a)
   )
 
   const courseTypeLabel: Record<string, string> = {
@@ -195,7 +196,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                   fontWeight: sort === 'clicks' ? 600 : 400,
                 }}
               >
-                클릭순
+                신뢰도순
               </button>
             </div>
           </div>
