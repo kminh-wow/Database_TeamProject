@@ -1,7 +1,9 @@
 import os
+import re
 import json
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 from groq import Groq
 from app.database import get_session
 from app.schemas.course import ContentItem, ContentsResponse
@@ -87,15 +89,53 @@ def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[Con
     return saved
 
 
+_INVALID_URL_PATTERNS = re.compile(
+    r"example\.|placeholder|sample\.|test\.|dummy|localhost|\.\.\.|\.\.\.|/\.\.\."
+)
+_YOUTUBE_PATTERN = re.compile(
+    r"(youtube\.com/watch\?v=[\w\-]{11}|youtu\.be/[\w\-]{11})"
+)
+
+
+def _is_valid_item(item: dict) -> bool:
+    url = item.get("url", "")
+    title = item.get("title", "")
+    type_ = item.get("type", "")
+
+    if not title or not url or type_ not in ("youtube", "blog", "pdf"):
+        return False
+
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return False
+    except Exception:
+        return False
+
+    if _INVALID_URL_PATTERNS.search(url):
+        return False
+
+    if type_ == "youtube" and not _YOUTUBE_PATTERN.search(url):
+        return False
+
+    return True
+
+
 def _call_ai(course_name: str, description: str | None) -> list[dict]:
     prompt = f"""다음 대학 교과목에 적합한 학습 콘텐츠를 추천해줘.
 
 교과목명: {course_name}
 개요: {description or "없음"}
 
+규칙:
+- 실제로 존재하고 접근 가능한 URL만 포함할 것
+- YouTube URL은 반드시 https://www.youtube.com/watch?v=XXXXXXXXXXX 형식 (11자리 ID)
+- 가상·예시·플레이스홀더 URL 절대 금지
+- 한국어 학습자에게 유용한 자료 우선
+
 아래 JSON 배열 형식으로만 응답해. 다른 텍스트 없이 JSON만:
 [
-  {{"title": "콘텐츠 제목", "url": "https://...", "type": "youtube"}},
+  {{"title": "콘텐츠 제목", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "type": "youtube"}},
   {{"title": "콘텐츠 제목", "url": "https://...", "type": "blog"}},
   {{"title": "콘텐츠 제목", "url": "https://...", "type": "pdf"}}
 ]
@@ -105,7 +145,7 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
     response = _get_client().chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
+        temperature=0.2,
     )
     raw = response.choices[0].message.content.strip()
 
@@ -114,7 +154,19 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
         if raw.startswith("json"):
             raw = raw[4:]
 
-    return json.loads(raw)
+    items = json.loads(raw)
+    return [item for item in items if _is_valid_item(item)]
+
+
+def delete_all_ai_contents() -> int:
+    with get_session() as session:
+        count_result = session.run(
+            "MATCH (ct:Content {source: 'ai'}) RETURN count(ct) AS cnt"
+        )
+        cnt = count_result.single()["cnt"]
+        if cnt > 0:
+            session.run("MATCH (ct:Content {source: 'ai'}) DETACH DELETE ct")
+        return cnt
 
 
 def delete_cached_contents(course_id: str) -> int:

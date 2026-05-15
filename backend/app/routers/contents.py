@@ -16,6 +16,13 @@ def get_contents(course_id: str):
         raise HTTPException(status_code=500, detail=f"콘텐츠 추천 오류: {str(e)}")
 
 
+@router.delete("/contents/all", status_code=200)
+def reset_all_ai_contents():
+    """전체 AI 추천 콘텐츠 캐시 일괄 초기화"""
+    deleted = ai_service.delete_all_ai_contents()
+    return {"deleted": deleted}
+
+
 @router.delete("/courses/{course_id}/contents", status_code=200)
 def reset_ai_contents(course_id: str):
     """AI 추천 콘텐츠 캐시 초기화"""
