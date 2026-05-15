@@ -4,6 +4,7 @@ import json
 import uuid
 from datetime import datetime
 from urllib.parse import urlparse
+import httpx
 from groq import Groq
 from app.database import get_session
 from app.schemas.course import ContentItem, ContentsResponse
@@ -97,6 +98,29 @@ _YOUTUBE_PATTERN = re.compile(
 )
 
 
+_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; CourseNest/1.0)"}
+_DEAD_STATUSES = {404, 410, 451}
+
+
+def _url_alive(item: dict) -> bool:
+    url = item.get("url", "")
+    type_ = item.get("type", "")
+    try:
+        if type_ == "youtube":
+            r = httpx.get(
+                f"https://www.youtube.com/oembed?url={url}&format=json",
+                timeout=5, follow_redirects=True, headers=_HEADERS,
+            )
+            return r.status_code == 200
+        else:
+            r = httpx.head(url, timeout=5, follow_redirects=True, headers=_HEADERS)
+            if r.status_code == 405:
+                r = httpx.get(url, timeout=5, follow_redirects=True, headers=_HEADERS)
+            return r.status_code not in _DEAD_STATUSES
+    except Exception:
+        return False
+
+
 def _is_valid_item(item: dict) -> bool:
     url = item.get("url", "")
     title = item.get("title", "")
@@ -155,7 +179,8 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
             raw = raw[4:]
 
     items = json.loads(raw)
-    return [item for item in items if _is_valid_item(item)]
+    format_ok = [item for item in items if _is_valid_item(item)]
+    return [item for item in format_ok if _url_alive(item)]
 
 
 def delete_all_ai_contents() -> int:
