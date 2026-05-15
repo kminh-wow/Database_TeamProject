@@ -167,7 +167,7 @@ export default function MyStudyRoom() {
             <div className="grid grid-cols-1 gap-3 max-w-2xl">
               {folderItems.map(item => (
                 <div key={item.content_id}
-                  className="bg-slate-800 rounded-xl p-4 flex items-start gap-3 hover:bg-slate-750 transition-colors">
+                  className="bg-slate-800 rounded-xl p-4 flex items-start gap-3 hover:bg-slate-700 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-gray-300">

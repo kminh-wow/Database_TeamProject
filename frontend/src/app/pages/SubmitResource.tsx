@@ -109,10 +109,10 @@ export default function SubmitResource() {
               <div className="grid grid-cols-4 gap-3">
                 {resourceTypes.map(({ value, label, Icon, color, bg }) => (
                   <button key={value} type="button" onClick={() => setFormData({ ...formData, type: value })}
-                    className={`p-4 rounded-2xl transition-all ${
+                    className={`p-4 rounded-2xl transition-all cursor-pointer ${
                       formData.type === value
                         ? 'bg-amber-50 border-2 border-amber-400 shadow-md'
-                        : 'bg-gray-50 border-2 border-transparent hover:border-gray-200'
+                        : 'bg-gray-50 border-2 border-transparent hover:border-amber-300 hover:bg-amber-50/50'
                     }`}>
                     <div className={`w-10 h-10 mx-auto mb-2 rounded-xl ${bg} flex items-center justify-center`}>
                       <Icon className={`w-5 h-5 ${color}`} />

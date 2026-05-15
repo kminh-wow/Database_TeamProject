@@ -69,7 +69,7 @@ export default function Auth() {
             <div className="flex border-b">
               {(['login', 'signup'] as const).map(m => (
                 <button key={m} onClick={() => setMode(m)}
-                  className="flex-1 py-4 text-sm transition-colors"
+                  className="flex-1 py-4 text-sm transition-all cursor-pointer hover:opacity-80"
                   style={{
                     fontWeight: mode === m ? 700 : 500,
                     background: mode === m ? '#F0F7F7' : 'transparent',
@@ -128,7 +128,7 @@ export default function Auth() {
                       value={form.password} onChange={e => update('password', e.target.value)}
                       className="pl-10 pr-10 h-12 bg-gray-50 border-gray-200 rounded-xl" required />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
