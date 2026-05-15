@@ -144,7 +144,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
             <div className="flex">
               <button
                 onClick={() => setTab('ai')}
-                className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors cursor-pointer hover:opacity-80"
                 style={{
                   color: tab === 'ai' ? '#4A7C7E' : '#ABABAB',
                   borderBottom: tab === 'ai' ? '2px solid #7AACAE' : '2px solid transparent',
@@ -158,7 +158,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
               </button>
               <button
                 onClick={() => setTab('user')}
-                className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors cursor-pointer hover:opacity-80"
                 style={{
                   color: tab === 'user' ? '#4A7C7E' : '#ABABAB',
                   borderBottom: tab === 'user' ? '2px solid #7AACAE' : '2px solid transparent',
@@ -177,7 +177,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
               <ArrowUpDown className="w-3.5 h-3.5 text-gray-300" />
               <button
                 onClick={() => setSort('likes')}
-                className="text-xs px-2 py-1 rounded-lg transition-colors"
+                className="text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer hover:opacity-70"
                 style={{
                   background: sort === 'likes' ? '#F0F4F4' : 'transparent',
                   color: sort === 'likes' ? '#4A7C7E' : '#ABABAB',
@@ -188,7 +188,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
               </button>
               <button
                 onClick={() => setSort('clicks')}
-                className="text-xs px-2 py-1 rounded-lg transition-colors"
+                className="text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer hover:opacity-70"
                 style={{
                   background: sort === 'clicks' ? '#F0F4F4' : 'transparent',
                   color: sort === 'clicks' ? '#4A7C7E' : '#ABABAB',
@@ -221,7 +221,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                 <p className="text-center text-gray-300 text-sm py-12">추천 자료가 없습니다.</p>
               ) : (
                 sortedAi.map((item, i) => (
-                  <div key={i} className="rounded-xl border border-gray-100 p-4"
+                  <div key={i} className="rounded-xl border border-gray-100 p-4 transition-all hover:border-teal-200 hover:shadow-sm"
                     style={{ background: '#FAFAFA' }}>
                     <div className="flex items-start gap-3">
                       {/* 북마크 */}
@@ -235,8 +235,10 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                           like_count: item.like_count,
                           dislike_count: item.dislike_count,
                         })}
-                        className="mt-0.5 flex-shrink-0 transition-colors"
+                        className="mt-0.5 flex-shrink-0 transition-colors cursor-pointer hover:scale-110"
                         style={{ color: '#CCC' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#CCC' }}
                       >
                         <Star className="w-4 h-4" />
                       </button>
@@ -273,7 +275,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                         <button
                           onClick={() => handleFeedback(item.content_id, 'like')}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[item.content_id] === 'like' ? '#EDF7ED' : '#F0F0F0',
                             color: votes[item.content_id] === 'like' ? '#3D8B3D' : '#888',
@@ -284,7 +286,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                         </button>
                         <button
                           onClick={() => handleFeedback(item.content_id, 'dislike')}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[item.content_id] === 'dislike' ? '#FDECEA' : '#F0F0F0',
                             color: votes[item.content_id] === 'dislike' ? '#B03A2E' : '#888',
@@ -320,8 +322,10 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                       {/* 북마크 */}
                       <button
                         onClick={() => user ? setFolderTarget(resource) : navigate('/auth')}
-                        className="mt-0.5 flex-shrink-0 transition-colors"
+                        className="mt-0.5 flex-shrink-0 transition-colors cursor-pointer hover:scale-110"
                         style={{ color: '#CCC' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#CCC' }}
                       >
                         <Star className="w-4 h-4" />
                       </button>
@@ -358,7 +362,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                         <button
                           onClick={() => handleFeedback(resource.content_id, 'like')}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[resource.content_id] === 'like' ? '#EDF7ED' : '#F0F0F0',
                             color: votes[resource.content_id] === 'like' ? '#3D8B3D' : '#888',
@@ -369,7 +373,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                         </button>
                         <button
                           onClick={() => handleFeedback(resource.content_id, 'dislike')}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[resource.content_id] === 'dislike' ? '#FDECEA' : '#F0F0F0',
                             color: votes[resource.content_id] === 'dislike' ? '#B03A2E' : '#888',

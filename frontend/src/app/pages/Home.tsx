@@ -199,10 +199,12 @@ export default function Home() {
                 <button
                   key={college}
                   onClick={() => { setSelectedCollege(college); setSelectedMajor('') }}
-                  className="px-3 py-2 rounded-xl text-sm font-medium transition-colors text-left"
-                  style={selectedCollege === college
-                    ? { background: '#6B9FA1', color: 'white' }
-                    : { background: '#F9FAFB', color: '#4B5563' }}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${
+                    selectedCollege === college
+                      ? 'text-white'
+                      : 'bg-gray-50 text-gray-600 hover:bg-teal-50 hover:text-teal-700'
+                  }`}
+                  style={selectedCollege === college ? { background: '#6B9FA1' } : {}}
                 >
                   {college}
                 </button>
@@ -219,10 +221,10 @@ export default function Home() {
                   <button
                     key={major}
                     onClick={() => setSelectedMajor(major)}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer ${
                       selectedMajor === major
                         ? 'bg-teal-50 text-teal-700 font-medium'
-                        : 'text-gray-700 hover:bg-teal-50'
+                        : 'text-gray-700 hover:bg-teal-50 hover:text-teal-700'
                     }`}
                   >
                     {major}
@@ -243,8 +245,10 @@ export default function Home() {
           <button
             onClick={handleStart}
             disabled={!selectedMajor}
-            className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             style={{ background: selectedMajor ? '#6B9FA1' : '#9CA3AF' }}
+            onMouseEnter={e => { if (selectedMajor) e.currentTarget.style.background = '#5A8E90' }}
+            onMouseLeave={e => { if (selectedMajor) e.currentTarget.style.background = '#6B9FA1' }}
           >
             시작하기 →
           </button>
