@@ -24,20 +24,34 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
             """
             MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
             WHERE ct.source = 'ai'
-            RETURN ct.title AS title, ct.url AS url, ct.type AS type
+            RETURN ct.content_id AS content_id, ct.title AS title, ct.url AS url,
+                   ct.type AS type, ct.like_count AS like_count, ct.dislike_count AS dislike_count
             """,
             course_id=course_id,
         )
         records = list(result)
         if not records:
             return None
-        return [ContentItem(title=r["title"], url=r["url"], type=r["type"]) for r in records]
+        return [
+            ContentItem(
+                content_id=r["content_id"],
+                title=r["title"],
+                url=r["url"],
+                type=r["type"],
+                source="ai",
+                like_count=r["like_count"] or 0,
+                dislike_count=r["dislike_count"] or 0,
+            )
+            for r in records
+        ]
 
 
-def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None:
+def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[ContentItem]:
     now = datetime.utcnow().isoformat()
+    saved: list[ContentItem] = []
     with get_session() as session:
-        for item in contents:
+        for item in raw_items:
+            content_id = str(uuid.uuid4())
             session.run(
                 """
                 MATCH (c:Course {courseId: $course_id})
@@ -55,15 +69,25 @@ def _save_contents_to_neo4j(course_id: str, contents: list[ContentItem]) -> None
                 CREATE (c)-[:HAS_CONTENT]->(ct)
                 """,
                 course_id=course_id,
-                content_id=str(uuid.uuid4()),
-                url=item.url,
-                title=item.title,
-                type=item.type,
+                content_id=content_id,
+                title=item["title"],
+                url=item["url"],
+                type=item["type"],
                 now=now,
             )
+            saved.append(ContentItem(
+                content_id=content_id,
+                title=item["title"],
+                url=item["url"],
+                type=item["type"],
+                source="ai",
+                like_count=0,
+                dislike_count=0,
+            ))
+    return saved
 
 
-def _call_ai(course_name: str, description: str | None) -> list[ContentItem]:
+def _call_ai(course_name: str, description: str | None) -> list[dict]:
     prompt = f"""다음 대학 교과목에 적합한 학습 콘텐츠를 추천해줘.
 
 교과목명: {course_name}
@@ -90,8 +114,7 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
         if raw.startswith("json"):
             raw = raw[4:]
 
-    data = json.loads(raw)
-    return [ContentItem(**item) for item in data]
+    return json.loads(raw)
 
 
 def delete_cached_contents(course_id: str) -> int:
@@ -136,8 +159,8 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
             cached=True,
         )
 
-    contents = _call_ai(course_name, description)
-    _save_contents_to_neo4j(course_id, contents)
+    raw = _call_ai(course_name, description)
+    contents = _save_and_return_contents(course_id, raw)
 
     return ContentsResponse(
         course_id=course_id,

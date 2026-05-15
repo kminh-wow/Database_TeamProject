@@ -91,9 +91,13 @@ class CurriculumGraphResponse(BaseModel):
 
 # 콘텐츠 추천 (AI)
 class ContentItem(BaseModel):
+    content_id: str
     title: str
     url: str
     type: str  # "youtube" | "blog" | "pdf"
+    source: str = "ai"
+    like_count: int = 0
+    dislike_count: int = 0
 
 
 class ContentsResponse(BaseModel):
