@@ -28,7 +28,7 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
     } catch (e: any) {
       if (e?.response?.status === 409) {
         toast.error('이미 저장된 자료입니다.')
-      } else {
+      } else if (e?.response?.status !== 403) {
         toast.error('저장에 실패했습니다.')
       }
     } finally {

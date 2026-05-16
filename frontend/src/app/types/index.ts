@@ -62,6 +62,7 @@ export interface ResourceItem {
   url: string
   type: string
   source: 'ai' | 'user'
+  description?: string
   like_count: number
   dislike_count: number
   created_at?: string

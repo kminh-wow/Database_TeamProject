@@ -23,6 +23,7 @@ def get_folders(uid: str) -> list[FolderResponse]:
         data = doc.to_dict()
         item_count = len(list(doc.reference.collection("items").stream()))
         result.append(FolderResponse(**data, item_count=item_count))
+    result.sort(key=lambda f: f.created_at)
     return result
 
 

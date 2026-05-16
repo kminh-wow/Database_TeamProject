@@ -28,6 +28,8 @@ const typeLabel = (type: string) => {
   if (type === 'youtube') return 'YouTube'
   if (type === 'blog') return '블로그'
   if (type === 'pdf') return 'PDF'
+  if (type === 'lecture') return '강의자료'
+  if (type === 'book') return '교재'
   return type
 }
 
@@ -77,8 +79,8 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
           : r
         )
       )
-    } catch {
-      toast.error('피드백 처리에 실패했습니다.')
+    } catch (e: any) {
+      if (e?.response?.status !== 403) toast.error('피드백 처리에 실패했습니다.')
     }
   }
 
