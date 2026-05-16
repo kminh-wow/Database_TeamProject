@@ -37,7 +37,8 @@ def add_item(folder_id: str, body: FolderItemCreate, user=Depends(get_current_us
     try:
         return folder_service.add_item(user["uid"], folder_id, body)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        detail = str(e)
+        raise HTTPException(status_code=409 if "이미 저장" in detail else 404, detail=detail)
 
 
 @router.get("/{folder_id}/items", response_model=list[FolderItemResponse])

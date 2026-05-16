@@ -50,9 +50,12 @@ def add_item(uid: str, folder_id: str, data: FolderItemCreate) -> FolderItemResp
     folder_ref = _folders_ref(uid).document(folder_id)
     if not folder_ref.get().exists:
         raise ValueError("폴더를 찾을 수 없습니다.")
+    item_ref = folder_ref.collection("items").document(data.content_id)
+    if item_ref.get().exists:
+        raise ValueError("이미 저장된 자료입니다.")
     now = datetime.utcnow().isoformat()
     doc = {**data.model_dump(), "saved_at": now}
-    folder_ref.collection("items").document(data.content_id).set(doc)
+    item_ref.set(doc)
     return FolderItemResponse(**doc)
 
 

@@ -25,8 +25,12 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
       await saveResource(folderId, courseId, courseName, resource)
       toast.success(`"${folderName}"에 저장되었습니다!`)
       onClose()
-    } catch {
-      toast.error('저장에 실패했습니다.')
+    } catch (e: any) {
+      if (e?.response?.status === 409) {
+        toast.error('이미 저장된 자료입니다.')
+      } else {
+        toast.error('저장에 실패했습니다.')
+      }
     } finally {
       setSaving(false)
     }
