@@ -51,7 +51,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
 
     setUserLoading(true)
     getResources(course.course_id)
-      .then(res => setUserResources(res.filter(r => r.source === 'user')))
+      .then(res => setUserResources(res))
       .catch(() => {})
       .finally(() => setUserLoading(false))
   }, [course.course_id])

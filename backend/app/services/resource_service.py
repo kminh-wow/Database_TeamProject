@@ -82,6 +82,7 @@ def create_resource(course_id: str, data: ResourceCreateRequest, uid: str) -> Re
         source="user",
         like_count=0,
         dislike_count=0,
+        created_at=now,
     )
 
 
