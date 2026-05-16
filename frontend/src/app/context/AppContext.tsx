@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  sendEmailVerification,
   User as FirebaseUser,
   updateProfile,
 } from 'firebase/auth'
@@ -79,7 +80,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(cred.user, { displayName: nickname })
-      return { success: true, message: '회원가입 성공!' }
+      await sendEmailVerification(cred.user)
+      return { success: true, message: '회원가입이 완료되었습니다. 인증 메일을 확인해주세요.' }
     } catch (e: any) {
       const msg =
         e.code === 'auth/email-already-in-use' ? '이미 사용 중인 이메일입니다.' :
