@@ -10,7 +10,7 @@ from groq import Groq, RateLimitError
 from app.database import get_session
 from app.schemas.course import ContentItem, ContentsResponse
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "llama-3.1-8b-instant"
 
 _client: Groq | None = None
 
