@@ -29,7 +29,8 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
             MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
             WHERE ct.source = 'ai'
             RETURN ct.content_id AS content_id, ct.title AS title, ct.url AS url,
-                   ct.type AS type, ct.like_count AS like_count, ct.dislike_count AS dislike_count
+                   ct.type AS type, ct.like_count AS like_count, ct.dislike_count AS dislike_count,
+                   ct.created_at AS created_at
             """,
             course_id=course_id,
         )
@@ -45,50 +46,60 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
                 source="ai",
                 like_count=r["like_count"] or 0,
                 dislike_count=r["dislike_count"] or 0,
+                created_at=r["created_at"],
             )
             for r in records
         ]
 
 
 def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[ContentItem]:
+    if not raw_items:
+        return []
     now = datetime.utcnow().isoformat()
-    saved: list[ContentItem] = []
+    items_with_ids = [
+        {
+            "content_id": str(uuid.uuid4()),
+            "title": item["title"],
+            "url": item["url"],
+            "type": item["type"],
+        }
+        for item in raw_items
+    ]
     with get_session() as session:
-        for item in raw_items:
-            content_id = str(uuid.uuid4())
-            session.run(
-                """
-                MATCH (c:Course {courseId: $course_id})
-                CREATE (ct:Content {
-                    content_id: $content_id,
-                    title: $title,
-                    url: $url,
-                    type: $type,
-                    source: 'ai',
-                    like_count: 0,
-                    dislike_count: 0,
-                    created_at: $now,
-                    generated_at: $now
-                })
-                CREATE (c)-[:HAS_CONTENT]->(ct)
-                """,
-                course_id=course_id,
-                content_id=content_id,
-                title=item["title"],
-                url=item["url"],
-                type=item["type"],
-                now=now,
-            )
-            saved.append(ContentItem(
-                content_id=content_id,
-                title=item["title"],
-                url=item["url"],
-                type=item["type"],
-                source="ai",
-                like_count=0,
-                dislike_count=0,
-            ))
-    return saved
+        session.run(
+            """
+            UNWIND $items AS item
+            MATCH (c:Course {courseId: $course_id})
+            CREATE (ct:Content {
+                content_id: item.content_id,
+                title: item.title,
+                url: item.url,
+                type: item.type,
+                source: 'ai',
+                like_count: 0,
+                dislike_count: 0,
+                created_at: $now,
+                generated_at: $now
+            })
+            CREATE (c)-[:HAS_CONTENT]->(ct)
+            """,
+            course_id=course_id,
+            items=items_with_ids,
+            now=now,
+        )
+    return [
+        ContentItem(
+            content_id=item["content_id"],
+            title=item["title"],
+            url=item["url"],
+            type=item["type"],
+            source="ai",
+            like_count=0,
+            dislike_count=0,
+            created_at=now,
+        )
+        for item in items_with_ids
+    ]
 
 
 _INVALID_URL_PATTERNS = re.compile(

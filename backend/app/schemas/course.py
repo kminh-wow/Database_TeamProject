@@ -94,10 +94,11 @@ class ContentItem(BaseModel):
     content_id: str
     title: str
     url: str
-    type: str  # "youtube" | "blog" | "pdf"
+    type: str  # "youtube" | "pdf"
     source: str = "ai"
     like_count: int = 0
     dislike_count: int = 0
+    created_at: Optional[str] = None
 
 
 class ContentsResponse(BaseModel):
@@ -141,6 +142,7 @@ class ResourceItem(BaseModel):
     description: Optional[str] = None
     like_count: int = 0
     dislike_count: int = 0
+    created_at: Optional[str] = None
 
 
 class ResourceCreateRequest(BaseModel):

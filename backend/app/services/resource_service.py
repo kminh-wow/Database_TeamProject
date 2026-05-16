@@ -6,11 +6,12 @@ from app.schemas.course import ResourceItem, ResourceCreateRequest, FeedbackResp
 
 
 def get_resources(course_id: str) -> list[ResourceItem]:
-    """과목의 자료 목록 조회 (좋아요 많은 순)"""
+    """과목의 사용자 자료 목록 조회 (좋아요 많은 순)"""
     with get_session() as session:
         result = session.run(
             """
             MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
+            WHERE ct.source = 'user'
             RETURN ct
             ORDER BY ct.like_count DESC
             """,
@@ -22,10 +23,11 @@ def get_resources(course_id: str) -> list[ResourceItem]:
                 title=r["ct"]["title"],
                 url=r["ct"]["url"],
                 type=r["ct"]["type"],
-                source=r["ct"].get("source", "user"),
+                source="user",
                 description=r["ct"].get("description"),
                 like_count=r["ct"].get("like_count", 0),
                 dislike_count=r["ct"].get("dislike_count", 0),
+                created_at=r["ct"].get("created_at"),
             )
             for r in result
         ]

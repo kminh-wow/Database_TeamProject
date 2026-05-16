@@ -14,7 +14,7 @@ interface CourseModalProps {
 }
 
 type TabType = 'ai' | 'user'
-type SortType = 'likes' | 'clicks'
+type SortType = 'likes' | 'recent'
 
 const typeIcon = (type: string) => {
   if (type === 'youtube') return <Youtube className="w-4 h-4" style={{ color: '#C0392B' }} />
@@ -78,12 +78,15 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
     }
   }
 
-  const netScore = (x: { like_count: number; dislike_count: number }) => x.like_count - x.dislike_count
   const sortedAi = [...aiContents].sort((a, b) =>
-    sort === 'likes' ? b.like_count - a.like_count : netScore(b) - netScore(a)
+    sort === 'recent'
+      ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
+      : b.like_count - a.like_count
   )
   const sortedUser = [...userResources].sort((a, b) =>
-    sort === 'likes' ? b.like_count - a.like_count : netScore(b) - netScore(a)
+    sort === 'recent'
+      ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
+      : b.like_count - a.like_count
   )
 
   const courseTypeLabel: Record<string, string> = {
@@ -188,15 +191,15 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                 추천순
               </button>
               <button
-                onClick={() => setSort('clicks')}
+                onClick={() => setSort('recent')}
                 className="text-xs px-2 py-1 rounded-lg transition-colors cursor-pointer hover:opacity-70"
                 style={{
-                  background: sort === 'clicks' ? '#F0F4F4' : 'transparent',
-                  color: sort === 'clicks' ? '#4A7C7E' : '#ABABAB',
-                  fontWeight: sort === 'clicks' ? 600 : 400,
+                  background: sort === 'recent' ? '#F0F4F4' : 'transparent',
+                  color: sort === 'recent' ? '#4A7C7E' : '#ABABAB',
+                  fontWeight: sort === 'recent' ? 600 : 400,
                 }}
               >
-                신뢰도순
+                최신순
               </button>
             </div>
           </div>

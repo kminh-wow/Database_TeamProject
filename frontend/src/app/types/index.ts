@@ -47,6 +47,7 @@ export interface ContentItem {
   source: 'ai' | 'user'
   like_count: number
   dislike_count: number
+  created_at?: string
 }
 
 export interface ContentsResponse {
@@ -63,6 +64,7 @@ export interface ResourceItem {
   source: 'ai' | 'user'
   like_count: number
   dislike_count: number
+  created_at?: string
 }
 
 export interface ResourcesResponse {
