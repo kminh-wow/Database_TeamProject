@@ -4,6 +4,7 @@ backend/ 디렉토리에서 실행: python populate_contents.py
 """
 import sys
 import os
+sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.dirname(__file__))
 
 from dotenv import load_dotenv
