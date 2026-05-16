@@ -135,6 +135,10 @@ export default function CurriculumGraph() {
                     </div>
                   </div>
                 ),
+                rawName: n.data.label,
+                year: n.data.year,
+                courseType: n.data.course_type,
+                credits: n.data.credits,
               },
               position: pos,
               style: {
@@ -210,7 +214,10 @@ export default function CurriculumGraph() {
   const onNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
     setSelectedCourse({
       course_id: node.id,
-      name: String(node.data?.label?.props?.children?.[0]?.props?.children || node.id),
+      name: node.data.rawName || node.id,
+      year: node.data.year,
+      course_type: node.data.courseType,
+      credits: node.data.credits,
     })
   }, [])
 
@@ -321,8 +328,7 @@ export default function CurriculumGraph() {
           />
           <MiniMap
             nodeColor={node => {
-              const n = baseNodes.find(bn => bn.id === node.id)
-              const year = n?.data?.year || 1
+              const year = node.data?.year || 1
               return yearColors[year]?.border || '#6B9FA1'
             }}
             style={{ background: '#1E293B' }}

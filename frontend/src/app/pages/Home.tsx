@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { BookMarked, Search, ChevronDown } from 'lucide-react'
+import { BookMarked } from 'lucide-react'
 import Logo from '../components/Logo'
 import { getDepartments } from '../api/curriculum'
 import { Department } from '../types'
@@ -86,8 +86,6 @@ export default function Home() {
   const [grouped, setGrouped] = useState<Record<string, string[]>>({})
   const [selectedCollege, setSelectedCollege] = useState('')
   const [selectedMajor, setSelectedMajor] = useState('')
-  const [collegeOpen, setCollegeOpen] = useState(false)
-  const [majorOpen, setMajorOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -133,13 +131,6 @@ export default function Home() {
 
         {/* 오른쪽: 자료공유 + 로그인/회원가입 */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/submit-resource')}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 transition-colors"
-          >
-            <Search className="w-4 h-4" />
-            자료 공유
-          </button>
           {user ? (
             <button
               onClick={logout}
