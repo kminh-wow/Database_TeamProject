@@ -135,7 +135,7 @@ def _is_valid_item(item: dict) -> bool:
     title = item.get("title", "")
     type_ = item.get("type", "")
 
-    if not title or not url or type_ not in ("youtube", "blog", "pdf"):
+    if not title or not url or type_ not in ("youtube", "pdf"):
         return False
 
     try:
@@ -161,19 +161,18 @@ def _call_ai(course_name: str, description: str | None, course_name_en: str = ""
 개요: {description or "없음"}
 
 규칙:
-- 실제로 존재하고 접근 가능한 URL만 포함할 것
-- YouTube URL은 반드시 https://www.youtube.com/watch?v=XXXXXXXXXXX 형식 (11자리 ID)
+- youtube: 반드시 https://www.youtube.com/watch?v=XXXXXXXXXXX 형식 (11자리 ID), 실제 존재하는 영상만
+- pdf: KOCW(kocw.net), 대학 공식 사이트, 학회, 정부기관 등 신뢰할 수 있는 출처만
 - 가상·예시·플레이스홀더 URL 절대 금지
 - 한국어 학습자에게 유용한 자료 우선
 
 아래 JSON 배열 형식으로만 응답해. 다른 텍스트 없이 JSON만:
 [
   {{"title": "콘텐츠 제목", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "type": "youtube"}},
-  {{"title": "콘텐츠 제목", "url": "https://...", "type": "blog"}},
-  {{"title": "콘텐츠 제목", "url": "https://...", "type": "pdf"}}
+  {{"title": "콘텐츠 제목", "url": "https://kocw.net/...", "type": "pdf"}}
 ]
 
-type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
+type은 "youtube", "pdf" 중 하나. 총 2~4개 추천."""
 
     for attempt in range(5):
         try:
