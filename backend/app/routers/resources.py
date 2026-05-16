@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user
 from app.schemas.course import (
+    ResourceItem,
     ResourceCreateRequest,
     ResourcesResponse,
     FeedbackRequest,
@@ -18,7 +19,7 @@ def get_resources(course_id: str):
     return ResourcesResponse(course_id=course_id, resources=resources)
 
 
-@router.post("/courses/{course_id}/resources", response_model=None, status_code=201)
+@router.post("/courses/{course_id}/resources", response_model=ResourceItem, status_code=201)
 def create_resource(course_id: str, body: ResourceCreateRequest, user=Depends(get_current_user)):
     """자료 등록"""
     try:

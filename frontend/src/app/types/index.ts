@@ -72,6 +72,19 @@ export interface ResourcesResponse {
   resources: ResourceItem[]
 }
 
+export interface ResourceCreateRequest {
+  title: string
+  url: string
+  type: string
+  description?: string
+}
+
+export interface FeedbackResponse {
+  content_id: string
+  like_count: number
+  dislike_count: number
+}
+
 // 신규: 백엔드 Folder/FolderItem 타입
 export interface Folder {
   folder_id: string

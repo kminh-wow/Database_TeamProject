@@ -41,7 +41,7 @@ export default function Auth() {
         if (form.password !== form.confirmPassword) { toast.error('비밀번호가 일치하지 않습니다.'); return }
         const result = await register(form.email, form.nickname, form.password)
         if (result.success) {
-          toast.success('회원가입을 완료했습니다!')
+          toast.success(result.message)
           navigate(location.state?.from || '/')
         } else {
           toast.error(result.message)
