@@ -5,9 +5,10 @@ import Logo from '../components/Logo'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { useApp } from '../context/AppContext'
-import { FolderItem } from '../types'
+import { Course, FolderItem } from '../types'
 import * as foldersApi from '../api/folders'
 import { toast } from 'sonner'
+import CourseModal from '../components/CourseModal'
 
 export default function MyStudyRoom() {
   const navigate = useNavigate()
@@ -18,6 +19,7 @@ export default function MyStudyRoom() {
   const [itemsLoading, setItemsLoading] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
 
   // 폴더 선택 시 아이템 로드
   useEffect(() => {
@@ -174,7 +176,12 @@ export default function MyStudyRoom() {
                         {item.type}
                       </span>
                       {item.course_name && (
-                        <span className="text-xs text-teal-400">{item.course_name}</span>
+                        <button
+                          onClick={() => setSelectedCourse({ course_id: item.course_id, name: item.course_name! })}
+                          className="text-xs text-teal-400 hover:text-teal-300 hover:underline transition-colors cursor-pointer"
+                        >
+                          {item.course_name}
+                        </button>
                       )}
                     </div>
                     <p className="text-sm font-medium text-white truncate">{item.title}</p>
@@ -196,6 +203,10 @@ export default function MyStudyRoom() {
           )}
         </div>
       </div>
+
+      {selectedCourse && (
+        <CourseModal course={selectedCourse} onClose={() => setSelectedCourse(null)} />
+      )}
     </div>
   )
 }

@@ -14,3 +14,18 @@ apiClient.interceptors.request.use(async (config) => {
   }
   return config
 })
+
+apiClient.interceptors.response.use(
+  res => res,
+  err => {
+    if (err?.response?.status === 403) {
+      const detail = err.response.data?.detail || ''
+      if (detail.includes('이메일 인증')) {
+        import('sonner').then(({ toast }) => {
+          toast.error('이메일 인증이 필요합니다. 메일함을 확인해주세요.')
+        })
+      }
+    }
+    return Promise.reject(err)
+  }
+)

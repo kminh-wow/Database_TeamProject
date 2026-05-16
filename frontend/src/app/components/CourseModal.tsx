@@ -349,6 +349,9 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                         <p className="text-sm font-semibold text-gray-800 leading-snug mb-1">
                           {resource.title}
                         </p>
+                        {resource.description && (
+                          <p className="text-xs text-gray-500 mb-1 leading-snug">{resource.description}</p>
+                        )}
                         <div className="flex items-center gap-2 flex-wrap mb-2">
                           <span className="text-xs px-2 py-0.5 rounded-md"
                             style={{ background: '#F0F0F0', color: '#888' }}>
