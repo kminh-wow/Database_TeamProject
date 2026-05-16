@@ -13,16 +13,24 @@ from app.database import get_session
 from app.services.ai_service import get_contents_for_course
 
 
-def get_all_courses() -> list[tuple[str, str]]:
+def get_all_courses() -> list[tuple[str, str, str]]:
     with get_session() as session:
         result = session.run(
             """
             MATCH (c:Course)-[:BELONGS_TO]->(d:Department)
-            RETURN c.courseId AS course_id, c.nameKr AS name, d.name AS dept
-            ORDER BY d.name, c.grade, c.nameKr
+            WHERE c.courseId IS NOT NULL
+            WITH c.courseId AS course_id, c.nameKr AS name, c.grade AS grade, collect(d.name)[0] AS dept
+            RETURN DISTINCT course_id, name, dept, grade
+            ORDER BY dept, grade, name
             """
         )
-        return [(r["course_id"], r["name"], r["dept"]) for r in result]
+        seen = set()
+        rows = []
+        for r in result:
+            if r["course_id"] not in seen:
+                seen.add(r["course_id"])
+                rows.append((r["course_id"], r["name"], r["dept"]))
+        return rows
 
 
 def main():

@@ -102,7 +102,7 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; CourseNest/1.0)"}
 _DEAD_STATUSES = {404, 410, 451}
 
 
-def _url_alive(item: dict) -> bool:
+def _url_alive(item: dict, course_name: str = "") -> bool:
     url = item.get("url", "")
     type_ = item.get("type", "")
     try:
@@ -111,7 +111,15 @@ def _url_alive(item: dict) -> bool:
                 f"https://www.youtube.com/oembed?url={url}&format=json",
                 timeout=5, follow_redirects=True, headers=_HEADERS,
             )
-            return r.status_code == 200
+            if r.status_code != 200:
+                return False
+            # 영상 제목이 과목명 키워드와 전혀 무관하면 제외
+            if course_name:
+                video_title = r.json().get("title", "").lower()
+                keywords = [w for w in course_name.lower().split() if len(w) > 1]
+                if not any(kw in video_title for kw in keywords):
+                    return False
+            return True
         else:
             r = httpx.head(url, timeout=5, follow_redirects=True, headers=_HEADERS)
             if r.status_code == 405:
@@ -170,6 +178,7 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
+        timeout=30,
     )
     raw = response.choices[0].message.content.strip()
 
@@ -180,7 +189,7 @@ type은 "youtube", "blog", "pdf" 중 하나. 총 3~5개 추천."""
 
     items = json.loads(raw)
     format_ok = [item for item in items if _is_valid_item(item)]
-    return [item for item in format_ok if _url_alive(item)]
+    return [item for item in format_ok if _url_alive(item, course_name)]
 
 
 def delete_all_ai_contents() -> int:
