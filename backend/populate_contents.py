@@ -4,6 +4,7 @@ backend/ 디렉토리에서 실행: python populate_contents.py
 """
 import sys
 import os
+import time
 sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -12,6 +13,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from app.database import get_session
 from app.services.ai_service import get_contents_for_course
+
+REQUEST_INTERVAL = 2.5  # 분당 ~24 요청 → Groq 무료 한도(30/min) 안전 마진
 
 
 def get_all_courses() -> list[tuple[str, str, str]]:
@@ -53,6 +56,7 @@ def main():
                 else:
                     print(f"완료 ({len(result.contents)}개)")
                     ok += 1
+                    time.sleep(REQUEST_INTERVAL)
                 break
             except Exception as e:
                 if attempt < 2:
