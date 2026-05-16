@@ -34,7 +34,7 @@ export default function MyStudyRoom() {
     if (folders.length > 0 && !selectedFolderId) {
       setSelectedFolderId(folders[0].folder_id)
     }
-  }, [folders])
+  }, [folders, selectedFolderId])
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return

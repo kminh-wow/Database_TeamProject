@@ -57,6 +57,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
   }, [course.course_id])
 
   const handleFeedback = async (contentId: string, action: 'like' | 'dislike') => {
+    if (!user) { toast.error('로그인이 필요합니다.'); return }
     if (votes[contentId] === action) return
     try {
       const res = await addFeedback(contentId, action)

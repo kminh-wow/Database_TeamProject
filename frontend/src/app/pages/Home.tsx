@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { BookMarked } from 'lucide-react'
 import Logo from '../components/Logo'
 import { getDepartments } from '../api/curriculum'
-import { Department } from '../types'
 import { useApp } from '../context/AppContext'
 
 const MAJOR_TO_COLLEGE: Record<string, string> = {
@@ -82,7 +81,6 @@ export default function Home() {
   const navigate = useNavigate()
   const { user, logout } = useApp()
 
-  const [departments, setDepartments] = useState<Department[]>([])
   const [grouped, setGrouped] = useState<Record<string, string[]>>({})
   const [selectedCollege, setSelectedCollege] = useState('')
   const [selectedMajor, setSelectedMajor] = useState('')
@@ -91,7 +89,6 @@ export default function Home() {
   useEffect(() => {
     getDepartments()
       .then(data => {
-        setDepartments(data)
         const g: Record<string, string[]> = {}
         data.forEach(d => {
           const college = MAJOR_TO_COLLEGE[d.name] ?? '기타'
