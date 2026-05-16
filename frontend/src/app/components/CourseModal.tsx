@@ -227,7 +227,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                     <div className="flex items-start gap-3">
                       {/* 북마크 */}
                       <button
-                        onClick={() => user && setFolderTarget({
+                        onClick={() => user ? setFolderTarget({
                           content_id: item.content_id,
                           title: item.title,
                           url: item.url,
@@ -235,7 +235,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                           source: 'ai',
                           like_count: item.like_count,
                           dislike_count: item.dislike_count,
-                        })}
+                        }) : navigate('/auth')}
                         className="mt-0.5 flex-shrink-0 transition-colors cursor-pointer hover:scale-110"
                         style={{ color: '#CCC' }}
                         onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}

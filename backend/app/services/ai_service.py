@@ -199,7 +199,12 @@ type은 "youtube", "pdf" 중 하나. 총 2~4개 추천."""
         if raw.startswith("json"):
             raw = raw[4:]
 
-    items = json.loads(raw)
+    try:
+        items = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(items, list):
+        return []
     format_ok = [item for item in items if _is_valid_item(item)]
     return [item for item in format_ok if _url_alive(item, course_name, course_name_en)]
 
