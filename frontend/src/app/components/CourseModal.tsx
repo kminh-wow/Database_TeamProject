@@ -16,6 +16,8 @@ interface CourseModalProps {
 type TabType = 'ai' | 'user'
 type SortType = 'likes' | 'recent'
 
+const _voteCache: Record<string, 'like' | 'dislike'> = {}
+
 const typeIcon = (type: string) => {
   if (type === 'youtube') return <Youtube className="w-4 h-4" style={{ color: '#C0392B' }} />
   if (type === 'blog') return <FileText className="w-4 h-4" style={{ color: '#2980B9' }} />
@@ -39,7 +41,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
   const [userResources, setUserResources] = useState<ResourceItem[]>([])
   const [aiLoading, setAiLoading] = useState(false)
   const [userLoading, setUserLoading] = useState(false)
-  const [votes, setVotes] = useState<Record<string, 'like' | 'dislike' | null>>({})
+  const [votes, setVotes] = useState<Record<string, 'like' | 'dislike' | null>>(() => ({ ..._voteCache }))
   const [folderTarget, setFolderTarget] = useState<ResourceItem | null>(null)
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
     if (votes[contentId] === action) return
     try {
       const res = await addFeedback(contentId, action)
+      _voteCache[contentId] = action
       setVotes(prev => ({ ...prev, [contentId]: action }))
       setUserResources(prev =>
         prev.map(r => r.content_id === contentId
