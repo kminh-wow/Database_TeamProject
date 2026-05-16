@@ -4,6 +4,7 @@ import { BookMarked } from 'lucide-react'
 import Logo from '../components/Logo'
 import { getDepartments } from '../api/curriculum'
 import { useApp } from '../context/AppContext'
+import { toast } from 'sonner'
 
 const MAJOR_TO_COLLEGE: Record<string, string> = {
   // AI대학
@@ -97,6 +98,7 @@ export default function Home() {
         })
         setGrouped(g)
       })
+      .catch(() => toast.error('학과 목록을 불러오지 못했습니다.'))
       .finally(() => setLoading(false))
   }, [])
 

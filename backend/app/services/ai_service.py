@@ -3,6 +3,7 @@ import re
 import json
 import time
 import uuid
+import threading
 from datetime import datetime
 from urllib.parse import urlparse
 import httpx
@@ -13,6 +14,15 @@ from app.schemas.course import ContentItem, ContentsResponse
 MODEL = "llama-3.1-8b-instant"
 
 _client: Groq | None = None
+_course_locks: dict[str, threading.Lock] = {}
+_course_locks_mutex = threading.Lock()
+
+
+def _get_course_lock(course_id: str) -> threading.Lock:
+    with _course_locks_mutex:
+        if course_id not in _course_locks:
+            _course_locks[course_id] = threading.Lock()
+        return _course_locks[course_id]
 
 
 def _get_client() -> Groq:
@@ -265,17 +275,18 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
         course_name_en = record.get("name_en") or ""
         description = record.get("description")
 
-    cached = _fetch_cached_contents(course_id)
-    if cached:
-        return ContentsResponse(
-            course_id=course_id,
-            course_name=course_name,
-            contents=cached,
-            cached=True,
-        )
+    with _get_course_lock(course_id):
+        cached = _fetch_cached_contents(course_id)
+        if cached:
+            return ContentsResponse(
+                course_id=course_id,
+                course_name=course_name,
+                contents=cached,
+                cached=True,
+            )
 
-    raw = _call_ai(course_name, description, course_name_en)
-    contents = _save_and_return_contents(course_id, raw)
+        raw = _call_ai(course_name, description, course_name_en)
+        contents = _save_and_return_contents(course_id, raw)
 
     return ContentsResponse(
         course_id=course_id,
