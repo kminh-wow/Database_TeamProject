@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { toast } from 'sonner'
 import { useApp } from '../context/AppContext'
+import { auth } from '../lib/firebase'
 import Logo from '../components/Logo'
 
 export default function Auth() {
@@ -30,8 +31,12 @@ export default function Auth() {
       if (mode === 'login') {
         const result = await login(form.email, form.password)
         if (result.success) {
-          toast.success('로그인되었습니다!')
-          navigate(location.state?.from || '/')
+          if (!auth.currentUser?.emailVerified) {
+            navigate('/verify-email')
+          } else {
+            toast.success('로그인되었습니다!')
+            navigate(location.state?.from || '/')
+          }
         } else {
           toast.error(result.message)
         }
@@ -41,8 +46,7 @@ export default function Auth() {
         if (form.password !== form.confirmPassword) { toast.error('비밀번호가 일치하지 않습니다.'); return }
         const result = await register(form.email, form.nickname, form.password)
         if (result.success) {
-          toast.success(result.message)
-          navigate(location.state?.from || '/')
+          navigate('/verify-email')
         } else {
           toast.error(result.message)
         }
