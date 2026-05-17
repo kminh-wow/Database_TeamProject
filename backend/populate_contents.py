@@ -14,7 +14,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 from app.database import get_session
 from app.services.ai_service import get_contents_for_course
 
-REQUEST_INTERVAL = 2.5  # 분당 ~24 요청 → Groq 무료 한도(30/min) 안전 마진
+REQUEST_INTERVAL = 4.0  # 분당 ~15 요청 → Groq 무료 한도(30/min) 충분한 여유
 
 
 def get_all_courses() -> list[tuple[str, str, str]]:
