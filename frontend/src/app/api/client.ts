@@ -20,11 +20,13 @@ apiClient.interceptors.response.use(
   err => {
     if (err?.response?.status === 403) {
       const detail = err.response.data?.detail || ''
-      if (detail.includes('이메일 인증')) {
-        import('sonner').then(({ toast }) => {
+      import('sonner').then(({ toast }) => {
+        if (detail.includes('이메일 인증')) {
           toast.error('이메일 인증이 필요합니다. 메일함을 확인해주세요.')
-        })
-      }
+        } else {
+          toast.error('로그인이 필요합니다.')
+        }
+      })
     }
     return Promise.reject(err)
   }

@@ -14,7 +14,7 @@ interface FolderSelectModalProps {
 }
 
 export default function FolderSelectModal({ resource, courseId, courseName, onClose }: FolderSelectModalProps) {
-  const { folders, saveResource, createFolder } = useApp()
+  const { folders, saveResource, createFolder, user } = useApp()
   const [showCreate, setShowCreate] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -44,8 +44,10 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
       await saveResource(folder.folder_id, courseId, courseName, resource)
       toast.success(`"${newFolderName}"에 저장되었습니다!`)
       onClose()
-    } catch {
-      toast.error('폴더 생성 또는 저장에 실패했습니다.')
+    } catch (e: any) {
+      if (e?.response?.status !== 403) {
+        toast.error('폴더 생성 또는 저장에 실패했습니다.')
+      }
     } finally {
       setSaving(false)
     }
@@ -62,6 +64,12 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
         </div>
 
         <p className="text-xs text-gray-500 mb-3 truncate">"{resource.title}"</p>
+
+        {user && !user.emailVerified && (
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            이메일 인증 후 저장 가능합니다. 메일함을 확인해주세요.
+          </div>
+        )}
 
         <div className="space-y-2 max-h-48 overflow-y-auto mb-3">
           {folders.length === 0 && (
