@@ -20,6 +20,7 @@ export default function VerifyEmail() {
     try {
       await auth.currentUser.reload()
       if (auth.currentUser.emailVerified) {
+        await auth.currentUser.getIdToken(true)  // 토큰 강제 갱신 (email_verified 반영)
         toast.success('이메일 인증이 완료되었습니다!')
         window.location.replace('/')
       } else {
