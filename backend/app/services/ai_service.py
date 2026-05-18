@@ -230,6 +230,44 @@ type은 "youtube", "blog" 중 하나. 총 2~4개 추천."""
     return [item for item in format_ok if _url_alive(item, course_name, course_name_en)]
 
 
+def _fetch_youtube_videos(course_name: str, course_name_en: str = "") -> list[dict]:
+    api_key = os.getenv("YOUTUBE_API_KEY", "")
+    if not api_key:
+        return []
+
+    query = f"{course_name} {course_name_en} 강의".strip() if course_name_en else f"{course_name} 강의"
+
+    try:
+        r = httpx.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={
+                "part": "snippet",
+                "q": query,
+                "type": "video",
+                "maxResults": 3,
+                "relevanceLanguage": "ko",
+                "key": api_key,
+            },
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return []
+        items = r.json().get("items", [])
+        result = []
+        for item in items:
+            video_id = item.get("id", {}).get("videoId")
+            title = item.get("snippet", {}).get("title", "")
+            if video_id and title:
+                result.append({
+                    "title": title,
+                    "url": f"https://www.youtube.com/watch?v={video_id}",
+                    "type": "youtube",
+                })
+        return result
+    except Exception:
+        return []
+
+
 def delete_all_ai_contents() -> int:
     with get_session() as session:
         count_result = session.run(
@@ -285,7 +323,9 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
                 cached=True,
             )
 
-        raw = _call_ai(course_name, description, course_name_en)
+        raw = _fetch_youtube_videos(course_name, course_name_en)
+        if not raw:
+            raw = _call_ai(course_name, description, course_name_en)
         contents = _save_and_return_contents(course_id, raw)
 
     return ContentsResponse(
