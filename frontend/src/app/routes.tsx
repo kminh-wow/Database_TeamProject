@@ -6,6 +6,7 @@ import SubmitResource from './pages/SubmitResource'
 import Auth from './pages/Auth'
 import MyStudyRoom from './pages/MyStudyRoom'
 import VerifyEmail from './pages/VerifyEmail'
+import AdminPage from './pages/AdminPage'
 import { useApp } from './context/AppContext'
 
 function RootLayout() {
@@ -16,7 +17,7 @@ function RootLayout() {
   useEffect(() => {
     if (authLoading) return
     if (user && !user.emailVerified) {
-      const exempt = ['/verify-email', '/auth']
+      const exempt = ['/verify-email', '/auth', '/admin']
       if (!exempt.includes(location.pathname)) {
         navigate('/verify-email', { replace: true })
       }
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: '/auth', Component: Auth },
       { path: '/verify-email', Component: VerifyEmail },
       { path: '/study-room', Component: MyStudyRoom },
+      { path: '/admin', Component: AdminPage },
       {
         path: '*',
         Component: () => (

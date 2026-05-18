@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import close_driver
-from app.routers import courses, contents, resources, folders
+from app.routers import courses, contents, resources, folders, admin
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.include_router(courses.router)
 app.include_router(contents.router)
 app.include_router(resources.router)
 app.include_router(folders.router)
+app.include_router(admin.router)
 
 
 @app.get("/", tags=["General"])
