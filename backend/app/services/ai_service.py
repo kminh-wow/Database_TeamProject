@@ -125,7 +125,7 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; CourseNest/1.0)"}
 _DEAD_STATUSES = {404, 410, 451}
 
 
-def _url_alive(item: dict, course_name: str = "", course_name_en: str = "") -> bool:
+def _url_alive(item: dict, course_name: str = "") -> bool:
     url = item.get("url", "")
     type_ = item.get("type", "")
     try:
@@ -138,8 +138,7 @@ def _url_alive(item: dict, course_name: str = "", course_name_en: str = "") -> b
                 return False
             # 영문명 키워드(2자 이상)로 영상 제목 관련성 확인, 없으면 한국어명 사용
             video_title = r.json().get("title", "").lower()
-            name_for_check = course_name_en or course_name
-            keywords = [w for w in name_for_check.lower().split() if len(w) > 1]
+            keywords = [w for w in course_name.lower().split() if len(w) > 1]
             if keywords and not any(kw in video_title for kw in keywords):
                 return False
             return True
@@ -176,7 +175,7 @@ def _is_valid_item(item: dict) -> bool:
     return True
 
 
-def _call_ai(course_name: str, description: str | None, course_name_en: str = "") -> list[dict]:
+def _call_ai(course_name: str, description: str | None) -> list[dict]:
     prompt = f"""다음 대학 교과목에 적합한 학습 콘텐츠를 추천해줘.
 
 교과목명: {course_name}
@@ -212,6 +211,9 @@ type은 "youtube", "blog" 중 하나. 총 2~4개 추천."""
                 wait = int(match.group(1)) * 60 + float(match.group(2)) + 5
             print(f"[Rate limit] {int(wait)}초 대기 후 재시도...", flush=True)
             time.sleep(wait)
+        except Exception as e:
+            print(f"[AI 오류] {e}", flush=True)
+            return []
     else:
         return []
     raw = response.choices[0].message.content.strip()
@@ -228,7 +230,7 @@ type은 "youtube", "blog" 중 하나. 총 2~4개 추천."""
     if not isinstance(items, list):
         return []
     format_ok = [item for item in items if _is_valid_item(item)]
-    return [item for item in format_ok if _url_alive(item, course_name, course_name_en)]
+    return [item for item in format_ok if _url_alive(item, course_name)]
 
 
 def _fetch_youtube_videos(course_name: str, course_name_en: str = "") -> list[dict]:
@@ -356,7 +358,7 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
         raw = _fetch_youtube_videos(course_name, course_name_en)
         raw += _fetch_naver_blogs(course_name, course_name_en)
         if not raw:
-            raw = _call_ai(course_name, description, course_name_en)
+            raw = _call_ai(course_name, description)
         contents = _save_and_return_contents(course_id, raw)
 
     return ContentsResponse(

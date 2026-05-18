@@ -129,35 +129,29 @@ def add_feedback(content_id: str, action: str, uid: str) -> FeedbackResponse:
 
     _check_and_set(db.transaction())
 
-    with get_session() as session:
+    try:
+        with get_session() as session:
+            result = session.run(
+                """
+                MATCH (ct:Content {content_id: $content_id})
+                SET ct.like_count    = coalesce(ct.like_count, 0)    + $like_delta,
+                    ct.dislike_count = coalesce(ct.dislike_count, 0) + $dislike_delta
+                RETURN ct.like_count AS like_count, ct.dislike_count AS dislike_count
+                """,
+                content_id=content_id,
+                like_delta=1 if action == "like" else (-1 if prev_action else 0),
+                dislike_delta=1 if action == "dislike" else (-1 if prev_action else 0),
+            )
+            record = result.single()
+            if not record:
+                raise ValueError(f"content_id '{content_id}' 를 찾을 수 없습니다.")
+    except Exception:
+        # Neo4j 실패 시 Firestore 투표 롤백
         if prev_action:
-            result = session.run(
-                """
-                MATCH (ct:Content {content_id: $content_id})
-                SET ct.like_count    = coalesce(ct.like_count, 0)    + $like_delta,
-                    ct.dislike_count = coalesce(ct.dislike_count, 0) + $dislike_delta
-                RETURN ct.like_count AS like_count, ct.dislike_count AS dislike_count
-                """,
-                content_id=content_id,
-                like_delta=1 if action == "like" else -1,
-                dislike_delta=1 if action == "dislike" else -1,
-            )
+            feedback_ref.set({"action": prev_action, "updated_at": datetime.utcnow().isoformat()})
         else:
-            result = session.run(
-                """
-                MATCH (ct:Content {content_id: $content_id})
-                SET ct.like_count    = coalesce(ct.like_count, 0)    + $like_delta,
-                    ct.dislike_count = coalesce(ct.dislike_count, 0) + $dislike_delta
-                RETURN ct.like_count AS like_count, ct.dislike_count AS dislike_count
-                """,
-                content_id=content_id,
-                like_delta=1 if action == "like" else 0,
-                dislike_delta=1 if action == "dislike" else 0,
-            )
-
-        record = result.single()
-        if not record:
-            raise ValueError(f"content_id '{content_id}' 를 찾을 수 없습니다.")
+            feedback_ref.delete()
+        raise
 
     return FeedbackResponse(
         content_id=content_id,

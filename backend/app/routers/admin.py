@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
 from app.database import get_session
@@ -25,7 +25,11 @@ class AdminContentItem(BaseModel):
 
 
 @router.get("/contents", response_model=list[AdminContentItem])
-def list_all_contents(_user=Depends(get_admin_user)):
+def list_all_contents(
+    _user=Depends(get_admin_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+):
     """전체 콘텐츠 목록 조회 (관리자 전용)"""
     with get_session() as session:
         result = session.run(
@@ -42,7 +46,10 @@ def list_all_contents(_user=Depends(get_admin_user)):
                    c.courseId AS course_id,
                    c.nameKr AS course_name
             ORDER BY ct.created_at DESC
-            """
+            SKIP $skip LIMIT $limit
+            """,
+            skip=skip,
+            limit=limit,
         )
         return [
             AdminContentItem(
