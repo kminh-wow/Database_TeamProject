@@ -14,6 +14,11 @@ import Logo from '../components/Logo'
 import { useApp } from '../context/AppContext'
 import { toast } from 'sonner'
 
+const SemesterHeaderNode = ({ data }: { data: { label: string } }) => (
+  <div className="text-center font-bold text-sm text-white select-none">{data.label}</div>
+)
+const nodeTypes = { semesterHeader: SemesterHeaderNode }
+
 function getRelatedIds(selectedId: string, edges: Edge[]): Set<string> {
   const related = new Set<string>([selectedId])
   const findAncestors = (id: string) => {
@@ -202,7 +207,7 @@ export default function CurriculumGraph() {
           const yc = yearColors[info.year] || yearColors[1]
           return {
             id: `__hdr_${colIdx}`,
-            type: 'default',
+            type: 'semesterHeader',
             data: { label: info.label },
             position: { x: COL_BASE_X[colIdx] ?? colIdx * 420, y: -60 },
             style: {
@@ -369,6 +374,7 @@ export default function CurriculumGraph() {
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
+          nodeTypes={nodeTypes}
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
