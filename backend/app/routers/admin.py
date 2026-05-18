@@ -7,6 +7,10 @@ from app.dependencies import get_admin_user
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 
+class BulkDeleteRequest(BaseModel):
+    content_ids: list[str]
+
+
 class AdminContentItem(BaseModel):
     content_id: str
     title: str
@@ -55,6 +59,32 @@ def list_all_contents(_user=Depends(get_admin_user)):
             )
             for r in result
         ]
+
+
+@router.delete("/contents/bulk", status_code=200)
+def bulk_delete_contents(body: BulkDeleteRequest, _user=Depends(get_admin_user)):
+    """콘텐츠 일괄 삭제 (관리자 전용)"""
+    if not body.content_ids:
+        return {"deleted": 0}
+    with get_session() as session:
+        session.run(
+            "UNWIND $ids AS id MATCH (ct:Content {content_id: id}) DETACH DELETE ct",
+            ids=body.content_ids,
+        )
+    return {"deleted": len(body.content_ids)}
+
+
+@router.delete("/contents/all", status_code=200)
+def reset_all_contents(_user=Depends(get_admin_user)):
+    """전체 AI 콘텐츠 초기화 (관리자 전용)"""
+    with get_session() as session:
+        result = session.run(
+            "MATCH (ct:Content {source: 'ai'}) RETURN count(ct) AS cnt"
+        )
+        cnt = result.single()["cnt"]
+        if cnt > 0:
+            session.run("MATCH (ct:Content {source: 'ai'}) DETACH DELETE ct")
+    return {"deleted": cnt}
 
 
 @router.delete("/contents/{content_id}", status_code=200)

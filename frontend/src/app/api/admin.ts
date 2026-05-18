@@ -21,3 +21,13 @@ export const getAdminContents = async (): Promise<AdminContentItem[]> => {
 export const deleteAdminContent = async (contentId: string): Promise<void> => {
   await apiClient.delete(`/api/admin/contents/${contentId}`)
 }
+
+export const bulkDeleteContents = async (contentIds: string[]): Promise<{ deleted: number }> => {
+  const res = await apiClient.delete('/api/admin/contents/bulk', { data: { content_ids: contentIds } })
+  return res.data
+}
+
+export const resetAllAiContents = async (): Promise<{ deleted: number }> => {
+  const res = await apiClient.delete('/api/admin/contents/all')
+  return res.data
+}
