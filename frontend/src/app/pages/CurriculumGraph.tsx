@@ -44,13 +44,27 @@ const SEMESTER_COL_IDX: Record<string, number> = {
   '4-1학기': 6, '4-2학기': 7,
 }
 
+// 학년 간 60px 추가 여백 적용
+const COL_BASE_X: Record<number, number> = {
+  0: 0,    1: 420,
+  2: 900,  3: 1320,
+  4: 1800, 5: 2220,
+  6: 2700, 7: 3120,
+}
+
+const HEADER_INFO: { label: string; year: number }[] = [
+  { label: '1학년 1학기', year: 1 }, { label: '1학년 2학기', year: 1 },
+  { label: '2학년 1학기', year: 2 }, { label: '2학년 2학기', year: 2 },
+  { label: '3학년 1학기', year: 3 }, { label: '3학년 2학기', year: 3 },
+  { label: '4학년 1학기', year: 4 }, { label: '4학년 2학기', year: 4 },
+]
+
 function computeGridPositions(apiNodes: ApiFlowNode[]) {
   const COLS = 2
   const NODE_W = 175
   const NODE_H = 70
   const H_GAP = 20
   const V_GAP = 16
-  const COL_STEP = 420
 
   const bySemester: Record<string, ApiFlowNode[]> = {}
   apiNodes.forEach(n => {
@@ -64,7 +78,7 @@ function computeGridPositions(apiNodes: ApiFlowNode[]) {
   const positions = new Map<string, { x: number; y: number }>()
   Object.entries(bySemester).forEach(([key, nodes]) => {
     const colIdx = SEMESTER_COL_IDX[key] ?? 0
-    const baseX = colIdx * COL_STEP
+    const baseX = COL_BASE_X[colIdx] ?? colIdx * 420
     nodes.forEach((n, i) => {
       const col = i % COLS
       const row = Math.floor(i / COLS)
@@ -176,7 +190,41 @@ export default function CurriculumGraph() {
           markerEnd: { type: MarkerType.ArrowClosed, color: '#6B9FA1' },
         }))
 
-        setBaseNodes(nodes)
+        // 컬럼 헤더 노드 생성
+        const presentCols = new Set<number>()
+        apiNodes.forEach((n: ApiFlowNode) => {
+          const key = `${n.data.year || 1}-${n.data.semester || '1학기'}`
+          presentCols.add(SEMESTER_COL_IDX[key] ?? 0)
+        })
+        const HEADER_W = 175 * 2 + 20
+        const headerNodes: Node[] = Array.from(presentCols).sort().map(colIdx => {
+          const info = HEADER_INFO[colIdx]
+          const yc = yearColors[info.year] || yearColors[1]
+          return {
+            id: `__hdr_${colIdx}`,
+            type: 'default',
+            data: { label: info.label },
+            position: { x: COL_BASE_X[colIdx] ?? colIdx * 420, y: -60 },
+            style: {
+              background: yc.border,
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '12px',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '5px 0',
+              width: HEADER_W,
+              textAlign: 'center',
+              cursor: 'default',
+              pointerEvents: 'none',
+            },
+            draggable: false,
+            selectable: false,
+            focusable: false,
+          }
+        })
+
+        setBaseNodes([...headerNodes, ...nodes])
         setBaseEdges(edges)
       })
       .catch(() => toast.error('커리큘럼을 불러오지 못했습니다.'))
@@ -186,18 +234,21 @@ export default function CurriculumGraph() {
   const displayNodes = useMemo(() => {
     if (!highlightedId) return baseNodes
     const related = getRelatedIds(highlightedId, baseEdges)
-    return baseNodes.map(node => ({
-      ...node,
-      style: {
-        ...node.style,
-        opacity: related.has(node.id) ? 1 : 0.2,
-        boxShadow: node.id === highlightedId
-          ? '0 0 0 3px #6B9FA1, 0 0 16px rgba(107,159,161,0.5)'
-          : related.has(node.id)
-            ? '0 4px 12px rgba(0,0,0,0.15)'
-            : 'none',
-      },
-    }))
+    return baseNodes.map(node => {
+      if (node.id.startsWith('__hdr_')) return node  // 헤더는 항상 그대로
+      return {
+        ...node,
+        style: {
+          ...node.style,
+          opacity: related.has(node.id) ? 1 : 0.2,
+          boxShadow: node.id === highlightedId
+            ? '0 0 0 3px #6B9FA1, 0 0 16px rgba(107,159,161,0.5)'
+            : related.has(node.id)
+              ? '0 4px 12px rgba(0,0,0,0.15)'
+              : 'none',
+        },
+      }
+    })
   }, [baseNodes, highlightedId, baseEdges])
 
   const displayEdges = useMemo(() => {
@@ -222,6 +273,7 @@ export default function CurriculumGraph() {
   }, [baseEdges, highlightedId])
 
   const onNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
+    if (node.id.startsWith('__hdr_')) return
     setSelectedCourse({
       course_id: node.id,
       name: node.data.rawName || node.id,
@@ -232,6 +284,7 @@ export default function CurriculumGraph() {
   }, [])
 
   const onNodeMouseEnter = useCallback((_e: React.MouseEvent, node: Node) => {
+    if (node.id.startsWith('__hdr_')) return
     if (leaveTimer.current) clearTimeout(leaveTimer.current)
     setHighlightedId(node.id)
   }, [])
