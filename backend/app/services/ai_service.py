@@ -1,5 +1,6 @@
 import os
 import re
+import html
 import json
 import time
 import uuid
@@ -268,6 +269,35 @@ def _fetch_youtube_videos(course_name: str, course_name_en: str = "") -> list[di
         return []
 
 
+def _fetch_naver_blogs(course_name: str, course_name_en: str = "") -> list[dict]:
+    client_id = os.getenv("NAVER_CLIENT_ID", "")
+    client_secret = os.getenv("NAVER_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return []
+
+    query = f"{course_name} 강의" if not course_name_en else f"{course_name} {course_name_en} 강의"
+
+    try:
+        r = httpx.get(
+            "https://openapi.naver.com/v1/search/blog",
+            params={"query": query, "display": 3, "sort": "sim"},
+            headers={"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return []
+        items = r.json().get("items", [])
+        result = []
+        for item in items:
+            title = re.sub(r"<[^>]+>", "", html.unescape(item.get("title", "")))
+            link = item.get("link", "")
+            if title and link:
+                result.append({"title": title, "url": link, "type": "blog"})
+        return result
+    except Exception:
+        return []
+
+
 def delete_all_ai_contents() -> int:
     with get_session() as session:
         count_result = session.run(
@@ -324,6 +354,7 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
             )
 
         raw = _fetch_youtube_videos(course_name, course_name_en)
+        raw += _fetch_naver_blogs(course_name, course_name_en)
         if not raw:
             raw = _call_ai(course_name, description, course_name_en)
         contents = _save_and_return_contents(course_id, raw)
