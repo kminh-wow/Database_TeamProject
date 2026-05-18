@@ -14,8 +14,17 @@ export interface AdminContentItem {
 }
 
 export const getAdminContents = async (): Promise<AdminContentItem[]> => {
-  const res = await apiClient.get('/api/admin/contents')
-  return res.data
+  const all: AdminContentItem[] = []
+  const limit = 500
+  let skip = 0
+  while (true) {
+    const res = await apiClient.get('/api/admin/contents', { params: { skip, limit } })
+    const batch: AdminContentItem[] = res.data
+    all.push(...batch)
+    if (batch.length < limit) break
+    skip += limit
+  }
+  return all
 }
 
 export const deleteAdminContent = async (contentId: string): Promise<void> => {

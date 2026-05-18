@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.schemas.course import ContentsResponse
 from app.services import ai_service
-from app.dependencies import get_current_user
+from app.dependencies import get_admin_user
 
 router = APIRouter(prefix="/api", tags=["Contents"])
 
@@ -18,14 +18,14 @@ def get_contents(course_id: str):
 
 
 @router.delete("/contents/all", status_code=200)
-def reset_all_ai_contents(_user=Depends(get_current_user)):
-    """전체 AI 추천 콘텐츠 캐시 일괄 초기화"""
+def reset_all_ai_contents(_user=Depends(get_admin_user)):
+    """전체 AI 추천 콘텐츠 캐시 일괄 초기화 (관리자 전용)"""
     deleted = ai_service.delete_all_ai_contents()
     return {"deleted": deleted}
 
 
 @router.delete("/courses/{course_id}/contents", status_code=200)
-def reset_ai_contents(course_id: str, _user=Depends(get_current_user)):
-    """AI 추천 콘텐츠 캐시 초기화"""
+def reset_ai_contents(course_id: str, _user=Depends(get_admin_user)):
+    """AI 추천 콘텐츠 캐시 초기화 (관리자 전용)"""
     deleted = ai_service.delete_cached_contents(course_id)
     return {"course_id": course_id, "deleted": deleted}
