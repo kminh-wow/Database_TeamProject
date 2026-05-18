@@ -49,6 +49,7 @@ class CourseResponse(BaseModel):
 class NodeData(BaseModel):
     label: str
     year: Optional[int] = None
+    semester: Optional[str] = None
     course_type: Optional[str] = None
     credits: Optional[int] = None
 

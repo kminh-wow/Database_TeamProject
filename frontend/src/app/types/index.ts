@@ -14,6 +14,7 @@ export interface Course {
 export interface NodeData {
   label: React.ReactNode
   year?: number
+  semester?: string
   course_type?: string
   credits?: number
 }

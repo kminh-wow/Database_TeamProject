@@ -9,8 +9,14 @@ from app.schemas.course import (
     NodeData,
 )
 
-# 학년별 x 좌표 (React Flow 레이아웃)
-YEAR_X = {1: 0, 2: 350, 3: 700, 4: 1050, 5: 1400}
+# (학년, 학기) → 컬럼 인덱스
+SEMESTER_COL = {
+    (1, "1학기"): 0, (1, "2학기"): 1,
+    (2, "1학기"): 2, (2, "2학기"): 3,
+    (3, "1학기"): 4, (3, "2학기"): 5,
+    (4, "1학기"): 6, (4, "2학기"): 7,
+}
+COL_X_GAP = 420
 NODE_Y_GAP = 120
 
 
@@ -118,14 +124,17 @@ def get_curriculum_graph(department_name: str) -> CurriculumGraphResponse:
         )
         edge_pairs = [(r["source"], r["target"]) for r in edges_result]
 
-    # 학년별 y 인덱스 카운터
-    year_counter: dict[int, int] = {}
+    # (학년, 학기)별 y 인덱스 카운터
+    sem_counter: dict[tuple, int] = {}
     nodes: list[FlowNode] = []
 
     for c in courses:
         year = c.get("grade") or 1
-        idx = year_counter.get(year, 0)
-        year_counter[year] = idx + 1
+        semester = c.get("semester") or "1학기"
+        key = (year, semester)
+        idx = sem_counter.get(key, 0)
+        sem_counter[key] = idx + 1
+        col = SEMESTER_COL.get(key, (year - 1) * 2)
 
         nodes.append(
             FlowNode(
@@ -133,10 +142,11 @@ def get_curriculum_graph(department_name: str) -> CurriculumGraphResponse:
                 data=NodeData(
                     label=c["nameKr"],
                     year=year,
+                    semester=semester,
                     course_type=c.get("type"),
                     credits=c.get("credits"),
                 ),
-                position={"x": YEAR_X.get(year, 0), "y": idx * NODE_Y_GAP},
+                position={"x": col * COL_X_GAP, "y": idx * NODE_Y_GAP},
             )
         )
 

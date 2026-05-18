@@ -37,25 +37,34 @@ function getRelatedIds(selectedId: string, edges: Edge[]): Set<string> {
   return related
 }
 
+const SEMESTER_COL_IDX: Record<string, number> = {
+  '1-1학기': 0, '1-2학기': 1,
+  '2-1학기': 2, '2-2학기': 3,
+  '3-1학기': 4, '3-2학기': 5,
+  '4-1학기': 6, '4-2학기': 7,
+}
+
 function computeGridPositions(apiNodes: ApiFlowNode[]) {
-  const YEAR_BASE_X: Record<number, number> = { 1: 0, 2: 620, 3: 1240, 4: 1860 }
-  const COLS = 3
-  const NODE_W = 180
+  const COLS = 2
+  const NODE_W = 175
   const NODE_H = 70
   const H_GAP = 20
   const V_GAP = 16
+  const COL_STEP = 420
 
-  const byYear: Record<number, ApiFlowNode[]> = {}
+  const bySemester: Record<string, ApiFlowNode[]> = {}
   apiNodes.forEach(n => {
     const year = n.data.year || 1
-    if (!byYear[year]) byYear[year] = []
-    byYear[year].push(n)
+    const sem = n.data.semester || '1학기'
+    const key = `${year}-${sem}`
+    if (!bySemester[key]) bySemester[key] = []
+    bySemester[key].push(n)
   })
 
   const positions = new Map<string, { x: number; y: number }>()
-  Object.entries(byYear).forEach(([yearStr, nodes]) => {
-    const year = parseInt(yearStr)
-    const baseX = YEAR_BASE_X[year] ?? (year - 1) * 620
+  Object.entries(bySemester).forEach(([key, nodes]) => {
+    const colIdx = SEMESTER_COL_IDX[key] ?? 0
+    const baseX = colIdx * COL_STEP
     nodes.forEach((n, i) => {
       const col = i % COLS
       const row = Math.floor(i / COLS)
@@ -137,6 +146,7 @@ export default function CurriculumGraph() {
                 ),
                 rawName: n.data.label,
                 year: n.data.year,
+                semester: n.data.semester,
                 courseType: n.data.course_type,
                 credits: n.data.credits,
               },
@@ -257,7 +267,7 @@ export default function CurriculumGraph() {
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-slate-400">
               {Object.entries(yearColors).map(([year, c]) => (
-                <div key={year} className="flex items-center gap-1">
+                <div key={year} className="flex items-center gap-1.5">
                   <div
                     className="w-3 h-3 rounded-sm"
                     style={{ background: c.bg, border: `1.5px solid ${c.border}` }}
@@ -266,6 +276,8 @@ export default function CurriculumGraph() {
                 </div>
               ))}
             </div>
+            <div className="w-px h-4 bg-slate-700" />
+            <div className="text-xs text-slate-500">← 1학기 · 2학기 →</div>
             <div className="w-px h-4 bg-slate-700" />
             <div className="flex items-center gap-2 text-xs text-slate-400">
               {Object.entries(courseTypeColors).map(([type, color]) => (
