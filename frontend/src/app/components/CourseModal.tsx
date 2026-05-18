@@ -84,11 +84,13 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
     }
   }
 
-  const sortedAi = [...aiContents].sort((a, b) =>
-    sort === 'recent'
-      ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
-      : b.like_count - a.like_count
-  )
+  const sortedAi = [...aiContents]
+    .filter(item => item.type !== 'pdf')
+    .sort((a, b) =>
+      sort === 'recent'
+        ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
+        : b.like_count - a.like_count
+    )
   const sortedUser = [...userResources].sort((a, b) =>
     sort === 'recent'
       ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
