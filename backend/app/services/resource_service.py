@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from app.database import get_session
+from firebase_admin import firestore
 from app.firebase import get_firestore
 from app.schemas.course import ResourceItem, ResourceCreateRequest, FeedbackResponse
 
