@@ -18,14 +18,15 @@ type SortType = 'likes' | 'recent'
 
 const _voteCache: Record<string, 'like' | 'dislike'> = {}
 
-function StarButton({ isSaved, onClick }: { isSaved: boolean; onClick: () => void }) {
+function StarButton({ isSaved, onSave, onUnsave }: { isSaved: boolean; onSave: () => void; onUnsave: () => void }) {
   return (
     <button
-      onClick={onClick}
+      onClick={isSaved ? onUnsave : onSave}
       className="mt-0.5 flex-shrink-0 transition-all cursor-pointer hover:scale-110"
       style={{ color: isSaved ? '#F5A623' : '#CCC' }}
-      onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
-      onMouseLeave={e => { if (!isSaved) e.currentTarget.style.color = '#CCC' }}
+      onMouseEnter={e => { e.currentTarget.style.color = isSaved ? '#E0941A' : '#F5A623' }}
+      onMouseLeave={e => { e.currentTarget.style.color = isSaved ? '#F5A623' : '#CCC' }}
+      title={isSaved ? '저장 취소' : '폴더에 저장'}
     >
       <Star className="w-4 h-4" fill={isSaved ? '#F5A623' : 'none'} />
     </button>
@@ -49,7 +50,7 @@ const typeLabel = (type: string) => {
 
 export default function CourseModal({ course, onClose }: CourseModalProps) {
   const navigate = useNavigate()
-  const { user, savedContentIds } = useApp()
+  const { user, savedContentIds, unsaveFromAllFolders } = useApp()
 
   const [tab, setTab] = useState<TabType>('ai')
   const [sort, setSort] = useState<SortType>('likes')
@@ -250,7 +251,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                     <div className="flex items-start gap-3">
                       <StarButton
                         isSaved={savedContentIds.has(item.content_id)}
-                        onClick={() => user ? setFolderTarget({
+                        onSave={() => user ? setFolderTarget({
                           content_id: item.content_id,
                           title: item.title,
                           url: item.url,
@@ -259,6 +260,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                           like_count: item.like_count,
                           dislike_count: item.dislike_count,
                         }) : navigate('/auth')}
+                        onUnsave={() => unsaveFromAllFolders(item.content_id)}
                       />
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F0F0F0' }}>
@@ -322,7 +324,8 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                     <div className="flex items-start gap-3">
                       <StarButton
                         isSaved={savedContentIds.has(resource.content_id)}
-                        onClick={() => user ? setFolderTarget(resource) : navigate('/auth')}
+                        onSave={() => user ? setFolderTarget(resource) : navigate('/auth')}
+                        onUnsave={() => unsaveFromAllFolders(resource.content_id)}
                       />
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F0F0F0' }}>

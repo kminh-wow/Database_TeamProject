@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -23,6 +23,7 @@ interface AppContextType {
   folders: Folder[]
   foldersLoading: boolean
   savedContentIds: Set<string>
+  unsaveFromAllFolders: (contentId: string) => Promise<void>
   createFolder: (name: string) => Promise<Folder>
   deleteFolder: (folderId: string) => Promise<void>
   saveResource: (folderId: string, courseId: string, courseName: string, resource: ResourceItem) => Promise<void>
@@ -38,6 +39,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [folders, setFolders] = useState<Folder[]>([])
   const [foldersLoading, setFoldersLoading] = useState(false)
   const [savedContentIds, setSavedContentIds] = useState<Set<string>>(new Set())
+  const contentFolderMap = useRef<Map<string, string[]>>(new Map())
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -59,9 +61,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFolders(data)
       if (data.length > 0) {
         const allItems = await Promise.all(data.map(f => foldersApi.getItemsInFolder(f.folder_id)))
-        setSavedContentIds(new Set(allItems.flat().map(item => item.content_id)))
+        const newIds = new Set<string>()
+        const newMap = new Map<string, string[]>()
+        allItems.forEach((items, idx) => {
+          items.forEach(item => {
+            newIds.add(item.content_id)
+            const existing = newMap.get(item.content_id) ?? []
+            newMap.set(item.content_id, [...existing, data[idx].folder_id])
+          })
+        })
+        setSavedContentIds(newIds)
+        contentFolderMap.current = newMap
       } else {
         setSavedContentIds(new Set())
+        contentFolderMap.current = new Map()
       }
     } catch (e) {
       console.error('폴더 로딩 실패:', e)
@@ -140,10 +153,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshFolders()
   }
 
+  const unsaveFromAllFolders = async (contentId: string) => {
+    const folderIds = contentFolderMap.current.get(contentId) ?? []
+    await Promise.all(folderIds.map(fid => foldersApi.removeItemFromFolder(fid, contentId)))
+    setSavedContentIds(prev => { const next = new Set(prev); next.delete(contentId); return next })
+    await refreshFolders()
+  }
+
   return (
     <AppContext.Provider value={{
       user, authLoading, login, register, logout,
-      folders, foldersLoading, savedContentIds, createFolder, deleteFolder,
+      folders, foldersLoading, savedContentIds, unsaveFromAllFolders, createFolder, deleteFolder,
       saveResource, unsaveResource, refreshFolders,
     }}>
       {children}
