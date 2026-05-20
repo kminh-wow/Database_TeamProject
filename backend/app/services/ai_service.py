@@ -6,17 +6,21 @@ import time
 import uuid
 import threading
 from datetime import datetime
-from urllib.parse import urlparse
 import httpx
 from groq import Groq, RateLimitError
 from app.database import get_session
 from app.schemas.course import ContentItem, ContentsResponse
 
 MODEL = "llama-3.1-8b-instant"
+_MIN_DURATION_SEC = 180  # 3분 미만 영상 제거
 
 _client: Groq | None = None
 _course_locks: dict[str, threading.Lock] = {}
 _course_locks_mutex = threading.Lock()
+
+_SPAM_KEYWORDS = re.compile(
+    r"국비|학원|수강신청|프로모션|할인|부트캠프|내일배움카드|취업연계|무료수강|국가기간|내일배움"
+)
 
 
 def _get_course_lock(course_id: str) -> threading.Lock:
@@ -31,6 +35,214 @@ def _get_client() -> Groq:
     if _client is None:
         _client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     return _client
+
+
+def _parse_duration_seconds(iso_duration: str) -> int:
+    """ISO 8601 duration → 초 변환. PT4M30S → 270"""
+    match = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso_duration)
+    if not match:
+        return 0
+    h = int(match.group(1) or 0)
+    m = int(match.group(2) or 0)
+    s = int(match.group(3) or 0)
+    return h * 3600 + m * 60 + s
+
+
+def _extract_keywords_ai(course_name: str, description: str | None) -> list[str]:
+    """Groq로 과목 개요 분석 → YouTube 검색어 3개 추출 (CoT 방식)"""
+    if not description:
+        return []
+
+    prompt = f"""대학교 전공 과목 학습 자료를 유튜브에서 검색하려 합니다.
+아래 과목 개요를 분석하여, 학생들이 가장 어려워하는 핵심 개념 3가지를 추출하고
+각각을 유튜브 검색어 형태로 만들어 주세요.
+
+과목명: {course_name}
+개요: {description}
+
+JSON 문자열 배열만 반환 (설명 없이):
+["검색어1", "검색어2", "검색어3"]
+
+조건:
+- 각 검색어에 과목명 포함
+- 한국어, 전공 심화 개념 중심
+- 개론/입문이 아닌 구체적 메커니즘/알고리즘/원리"""
+
+    for attempt in range(3):
+        try:
+            response = _get_client().chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                timeout=30,
+            )
+            break
+        except RateLimitError as e:
+            wait = 90
+            match = re.search(r"try again in (\d+)m([\d.]+)s", str(e))
+            if match:
+                wait = int(match.group(1)) * 60 + float(match.group(2)) + 5
+            print(f"[Rate limit] {int(wait)}초 대기 후 재시도...", flush=True)
+            time.sleep(wait)
+        except Exception as e:
+            print(f"[키워드 추출 오류] {e}", flush=True)
+            return []
+    else:
+        return []
+
+    raw = response.choices[0].message.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+
+    try:
+        keywords = json.loads(raw)
+        if isinstance(keywords, list):
+            return [k.strip() for k in keywords if isinstance(k, str) and k.strip()][:3]
+    except json.JSONDecodeError:
+        pass
+    return []
+
+
+def _youtube_get_videos_with_duration(video_ids: list[str], api_key: str) -> list[dict]:
+    """videos.list로 duration 포함 상세 정보 조회 (1 unit)"""
+    try:
+        r = httpx.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            params={
+                "part": "contentDetails,snippet",
+                "id": ",".join(video_ids),
+                "key": api_key,
+            },
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return []
+        return r.json().get("items", [])
+    except Exception:
+        return []
+
+
+def _youtube_search(query: str, api_key: str, max_results: int = 5) -> list[str]:
+    """search.list → video_id 목록 반환 (100 units)"""
+    try:
+        r = httpx.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={
+                "part": "snippet",
+                "q": query,
+                "type": "video",
+                "maxResults": max_results,
+                "relevanceLanguage": "ko",
+                "key": api_key,
+            },
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return []
+        return [
+            item["id"]["videoId"]
+            for item in r.json().get("items", [])
+            if item.get("id", {}).get("videoId")
+        ]
+    except Exception:
+        return []
+
+
+def _pick_videos_by_duration(items: list[dict], seen_ids: set, limit: int = 1) -> list[dict]:
+    """duration >= 3분 필터 후 최대 limit개 반환"""
+    result = []
+    for item in items:
+        video_id = item.get("id", "")
+        if video_id in seen_ids:
+            continue
+        duration_str = item.get("contentDetails", {}).get("duration", "PT0S")
+        if _parse_duration_seconds(duration_str) < _MIN_DURATION_SEC:
+            continue
+        title = item.get("snippet", {}).get("title", "")
+        if video_id and title:
+            result.append({
+                "title": title,
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "type": "youtube",
+            })
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _fetch_youtube_videos(course_name: str, keywords: list[str] = [], populate_mode: bool = False) -> list[dict]:
+    """
+    populate_mode=True : YouTube 1회 호출 (100 units), 최대 2개
+    populate_mode=False: YouTube 3회 호출 (300 units), 키워드별 1개씩
+    """
+    api_key = os.getenv("YOUTUBE_API_KEY", "")
+    if not api_key:
+        return []
+
+    fallback_queries = [
+        f"{course_name} 개념 정리",
+        f"{course_name} 튜토리얼",
+        f"{course_name} 설명",
+    ]
+    queries = keywords if keywords else fallback_queries
+
+    if populate_mode:
+        video_ids = _youtube_search(queries[0], api_key, max_results=5)
+        if not video_ids:
+            return []
+        items = _youtube_get_videos_with_duration(video_ids, api_key)
+        return _pick_videos_by_duration(items, set(), limit=2)
+    else:
+        result = []
+        seen_ids: set[str] = set()
+        for q in queries[:3]:
+            video_ids = _youtube_search(q, api_key, max_results=5)
+            if not video_ids:
+                continue
+            items = _youtube_get_videos_with_duration(
+                [vid for vid in video_ids if vid not in seen_ids], api_key
+            )
+            picked = _pick_videos_by_duration(items, seen_ids, limit=1)
+            for v in picked:
+                seen_ids.add(v["url"].split("v=")[-1])
+                result.append(v)
+        return result
+
+
+def _fetch_naver_blogs(course_name: str, keywords: list[str] = []) -> list[dict]:
+    client_id = os.getenv("NAVER_CLIENT_ID", "")
+    client_secret = os.getenv("NAVER_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return []
+
+    query = keywords[0] if keywords else f"{course_name} 강의"
+
+    try:
+        r = httpx.get(
+            "https://openapi.naver.com/v1/search/blog",
+            params={"query": query, "display": 8, "sort": "sim"},
+            headers={"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return []
+        result = []
+        for item in r.json().get("items", []):
+            title = re.sub(r"<[^>]+>", "", html.unescape(item.get("title", "")))
+            desc = re.sub(r"<[^>]+>", "", html.unescape(item.get("description", "")))
+            link = item.get("link", "")
+            if not title or not link:
+                continue
+            if _SPAM_KEYWORDS.search(title) or _SPAM_KEYWORDS.search(desc):
+                continue
+            result.append({"title": title, "url": link, "type": "blog"})
+            if len(result) >= 3:
+                break
+        return result
+    except Exception:
+        return []
 
 
 def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
@@ -113,193 +325,6 @@ def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[Con
     ]
 
 
-_INVALID_URL_PATTERNS = re.compile(
-    r"example\.|placeholder|sample\.|test\.|dummy|localhost|\.\.\.|\.\.\.|/\.\.\."
-)
-_YOUTUBE_PATTERN = re.compile(
-    r"(youtube\.com/watch\?v=[\w\-]{11}|youtu\.be/[\w\-]{11})"
-)
-
-
-_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; CourseNest/1.0)"}
-_DEAD_STATUSES = {404, 410, 451}
-
-
-def _url_alive(item: dict, course_name: str = "") -> bool:
-    url = item.get("url", "")
-    type_ = item.get("type", "")
-    try:
-        if type_ == "youtube":
-            r = httpx.get(
-                f"https://www.youtube.com/oembed?url={url}&format=json",
-                timeout=5, follow_redirects=True, headers=_HEADERS,
-            )
-            if r.status_code != 200:
-                return False
-            # 영문명 키워드(2자 이상)로 영상 제목 관련성 확인, 없으면 한국어명 사용
-            video_title = r.json().get("title", "").lower()
-            keywords = [w for w in course_name.lower().split() if len(w) > 1]
-            if keywords and not any(kw in video_title for kw in keywords):
-                return False
-            return True
-        else:
-            r = httpx.head(url, timeout=5, follow_redirects=True, headers=_HEADERS)
-            if r.status_code == 405:
-                r = httpx.get(url, timeout=5, follow_redirects=True, headers=_HEADERS)
-            return r.status_code not in _DEAD_STATUSES
-    except Exception:
-        return False
-
-
-def _is_valid_item(item: dict) -> bool:
-    url = item.get("url", "")
-    title = item.get("title", "")
-    type_ = item.get("type", "")
-
-    if not title or not url or type_ not in ("youtube", "blog"):
-        return False
-
-    try:
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            return False
-    except Exception:
-        return False
-
-    if _INVALID_URL_PATTERNS.search(url):
-        return False
-
-    if type_ == "youtube" and not _YOUTUBE_PATTERN.search(url):
-        return False
-
-    return True
-
-
-def _call_ai(course_name: str, description: str | None) -> list[dict]:
-    prompt = f"""다음 대학 교과목에 적합한 학습 콘텐츠를 추천해줘.
-
-교과목명: {course_name}
-개요: {description or "없음"}
-
-규칙:
-- youtube: 반드시 https://www.youtube.com/watch?v=XXXXXXXXXXX 형식 (11자리 ID), 실제 존재하는 영상만
-- blog: 티스토리, velog, naver blog, medium, dev.to 등 실제 접근 가능한 기술 블로그 포스트
-- 가상·예시·플레이스홀더 URL 절대 금지
-- 한국어 학습자에게 유용한 자료 우선
-
-아래 JSON 배열 형식으로만 응답해. 다른 텍스트 없이 JSON만:
-[
-  {{"title": "콘텐츠 제목", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "type": "youtube"}},
-  {{"title": "콘텐츠 제목", "url": "https://velog.io/@someone/post-title", "type": "blog"}}
-]
-
-type은 "youtube", "blog" 중 하나. 총 2~4개 추천."""
-
-    for attempt in range(5):
-        try:
-            response = _get_client().chat.completions.create(
-                model=MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                timeout=30,
-            )
-            break
-        except RateLimitError as e:
-            wait = 90
-            match = re.search(r"try again in (\d+)m([\d.]+)s", str(e))
-            if match:
-                wait = int(match.group(1)) * 60 + float(match.group(2)) + 5
-            print(f"[Rate limit] {int(wait)}초 대기 후 재시도...", flush=True)
-            time.sleep(wait)
-        except Exception as e:
-            print(f"[AI 오류] {e}", flush=True)
-            return []
-    else:
-        return []
-    raw = response.choices[0].message.content.strip()
-
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-
-    try:
-        items = json.loads(raw)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(items, list):
-        return []
-    format_ok = [item for item in items if _is_valid_item(item)]
-    return [item for item in format_ok if _url_alive(item, course_name)]
-
-
-def _fetch_youtube_videos(course_name: str, course_name_en: str = "") -> list[dict]:
-    api_key = os.getenv("YOUTUBE_API_KEY", "")
-    if not api_key:
-        return []
-
-    query = f"{course_name} {course_name_en} 강의".strip() if course_name_en else f"{course_name} 강의"
-
-    try:
-        r = httpx.get(
-            "https://www.googleapis.com/youtube/v3/search",
-            params={
-                "part": "snippet",
-                "q": query,
-                "type": "video",
-                "maxResults": 3,
-                "relevanceLanguage": "ko",
-                "key": api_key,
-            },
-            timeout=10,
-        )
-        if r.status_code != 200:
-            return []
-        items = r.json().get("items", [])
-        result = []
-        for item in items:
-            video_id = item.get("id", {}).get("videoId")
-            title = item.get("snippet", {}).get("title", "")
-            if video_id and title:
-                result.append({
-                    "title": title,
-                    "url": f"https://www.youtube.com/watch?v={video_id}",
-                    "type": "youtube",
-                })
-        return result
-    except Exception:
-        return []
-
-
-def _fetch_naver_blogs(course_name: str, course_name_en: str = "") -> list[dict]:
-    client_id = os.getenv("NAVER_CLIENT_ID", "")
-    client_secret = os.getenv("NAVER_CLIENT_SECRET", "")
-    if not client_id or not client_secret:
-        return []
-
-    query = f"{course_name} 강의" if not course_name_en else f"{course_name} {course_name_en} 강의"
-
-    try:
-        r = httpx.get(
-            "https://openapi.naver.com/v1/search/blog",
-            params={"query": query, "display": 3, "sort": "sim"},
-            headers={"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret},
-            timeout=10,
-        )
-        if r.status_code != 200:
-            return []
-        items = r.json().get("items", [])
-        result = []
-        for item in items:
-            title = re.sub(r"<[^>]+>", "", html.unescape(item.get("title", "")))
-            link = item.get("link", "")
-            if title and link:
-                result.append({"title": title, "url": link, "type": "blog"})
-        return result
-    except Exception:
-        return []
-
-
 def delete_all_ai_contents() -> int:
     with get_session() as session:
         count_result = session.run(
@@ -333,16 +358,44 @@ def delete_cached_contents(course_id: str) -> int:
 
 
 def get_contents_for_course(course_id: str) -> ContentsResponse:
+    """캐시된 콘텐츠 반환. 없으면 빈 결과 (on-demand 생성 없음 - populate 스크립트 사용)."""
     with get_session() as session:
         result = session.run(
-            "MATCH (c:Course {courseId: $course_id}) RETURN c.nameKr AS name, c.nameEn AS name_en, c.descKr AS description",
+            "MATCH (c:Course {courseId: $course_id}) RETURN c.nameKr AS name",
             course_id=course_id,
         )
         record = result.single()
         if not record:
             raise ValueError(f"course_id '{course_id}' 를 찾을 수 없습니다.")
         course_name = record["name"]
-        course_name_en = record.get("name_en") or ""
+
+    cached = _fetch_cached_contents(course_id)
+    if cached:
+        return ContentsResponse(
+            course_id=course_id,
+            course_name=course_name,
+            contents=cached,
+            cached=True,
+        )
+    return ContentsResponse(
+        course_id=course_id,
+        course_name=course_name,
+        contents=[],
+        cached=False,
+    )
+
+
+def generate_contents_for_course(course_id: str, populate_mode: bool = True) -> ContentsResponse:
+    """populate 스크립트 전용: 새 파이프라인으로 콘텐츠 생성 및 캐싱."""
+    with get_session() as session:
+        result = session.run(
+            "MATCH (c:Course {courseId: $course_id}) RETURN c.nameKr AS name, c.descKr AS description",
+            course_id=course_id,
+        )
+        record = result.single()
+        if not record:
+            raise ValueError(f"course_id '{course_id}' 를 찾을 수 없습니다.")
+        course_name = record["name"]
         description = record.get("description")
 
     with _get_course_lock(course_id):
@@ -355,10 +408,9 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
                 cached=True,
             )
 
-        raw = _fetch_youtube_videos(course_name, course_name_en)
-        raw += _fetch_naver_blogs(course_name, course_name_en)
-        if not raw:
-            raw = _call_ai(course_name, description)
+        keywords = _extract_keywords_ai(course_name, description)
+        raw = _fetch_youtube_videos(course_name, keywords, populate_mode=populate_mode)
+        raw += _fetch_naver_blogs(course_name, keywords)
         contents = _save_and_return_contents(course_id, raw)
 
     return ContentsResponse(

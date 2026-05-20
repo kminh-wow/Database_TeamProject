@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api", tags=["Contents"])
 
 @router.get("/courses/{course_id}/contents", response_model=ContentsResponse)
 def get_contents(course_id: str):
-    """과목별 콘텐츠 추천 (캐시 우선, 없으면 AI 호출)"""
+    """과목별 콘텐츠 조회 (캐시 우선, 없으면 빈 결과 반환)"""
     try:
         return ai_service.get_contents_for_course(course_id)
     except ValueError as e:

@@ -40,3 +40,4 @@ app.include_router(admin.router)
 @app.get("/", tags=["General"])
 def root():
     return {"status": "ok", "service": "CourseNest API"}
+    
