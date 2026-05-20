@@ -385,8 +385,16 @@ def get_contents_for_course(course_id: str) -> ContentsResponse:
     )
 
 
-def generate_contents_for_course(course_id: str, populate_mode: bool = True) -> ContentsResponse:
-    """populate 스크립트 전용: 새 파이프라인으로 콘텐츠 생성 및 캐싱."""
+def generate_contents_for_course(
+    course_id: str,
+    populate_mode: bool = True,
+    naver_only: bool = False,
+) -> ContentsResponse:
+    """populate 스크립트 전용: 새 파이프라인으로 콘텐츠 생성 및 캐싱.
+
+    naver_only=True: YouTube 생략, Naver만 (Phase 1 - 전체 빠르게 채우기)
+    naver_only=False: YouTube + Naver 모두 (Phase 2 - 품질 완성)
+    """
     with get_session() as session:
         result = session.run(
             "MATCH (c:Course {courseId: $course_id}) RETURN c.nameKr AS name, c.descKr AS description",
@@ -409,7 +417,7 @@ def generate_contents_for_course(course_id: str, populate_mode: bool = True) -> 
             )
 
         keywords = _extract_keywords_ai(course_name, description)
-        raw = _fetch_youtube_videos(course_name, keywords, populate_mode=populate_mode)
+        raw = [] if naver_only else _fetch_youtube_videos(course_name, keywords, populate_mode=populate_mode)
         raw += _fetch_naver_blogs(course_name, keywords)
         contents = _save_and_return_contents(course_id, raw)
 

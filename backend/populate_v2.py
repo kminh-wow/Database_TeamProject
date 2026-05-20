@@ -1,19 +1,15 @@
 """
 새 파이프라인으로 전체 과목 콘텐츠 pre-populate.
 
-파이프라인:
-  1. Groq → 핵심 개념 3개 추출 (키워드)
-  2. YouTube: 첫 번째 키워드로 search (100 units) + videos.list duration 필터 → 최대 2개
-  3. Naver:   첫 번째 키워드로 검색, 스팸 필터 → 최대 3개
+Phase 1 - Naver 먼저 (빠르게):
+  python populate_v2.py --naver-only --all   # 전체 과목 1~2일 내 완료
 
-YouTube quota: ~101 units/과목 × 최대 DAILY_LIMIT과목 = ~9090 units/일 (10,000 limit 내)
-→ 300과목 기준 약 3일에 완료
-
-사용법:
-  cd backend
-  python populate_v2.py              # 기본 90과목/회
+Phase 2 - YouTube 추가 (점진적):
+  python populate_v2.py              # 기본 90과목/일 (YouTube quota 10,000 units)
   python populate_v2.py --limit 50   # 50과목만
   python populate_v2.py --all        # 남은 전체 (quota 주의)
+
+YouTube quota: ~101 units/과목 × 90과목/일 → 1963과목 기준 약 22일
 """
 
 import sys
@@ -48,8 +44,10 @@ def main():
     parser = argparse.ArgumentParser(description="AI 콘텐츠 pre-populate (새 파이프라인)")
     parser.add_argument("--limit", type=int, default=DAILY_LIMIT, help="처리할 최대 과목 수")
     parser.add_argument("--all", action="store_true", help="남은 전체 과목 처리 (quota 주의)")
+    parser.add_argument("--naver-only", action="store_true", help="Naver만 사용 (YouTube quota 절약, Phase 1)")
     args = parser.parse_args()
 
+    naver_only = args.naver_only
     limit = None if args.all else args.limit
     courses = get_courses_without_content(limit)
 
@@ -58,9 +56,8 @@ def main():
         return
 
     total = len(courses)
-    print(f"콘텐츠 없는 과목: {total}개 처리 시작")
-    if not args.all:
-        print(f"(오늘 처리: {total}개 / YouTube quota ~{total * 101} units)")
+    mode_str = "Naver only (Phase 1)" if naver_only else f"YouTube+Naver (Phase 2, ~{total * 101} YouTube units)"
+    print(f"콘텐츠 없는 과목: {total}개 처리 시작 [{mode_str}]")
 
     success = 0
     fail = 0
@@ -71,7 +68,7 @@ def main():
         print(f"[{i}/{total}] {name} ({course_id}) ...", end=" ", flush=True)
 
         try:
-            result = generate_contents_for_course(course_id, populate_mode=True)
+            result = generate_contents_for_course(course_id, populate_mode=True, naver_only=naver_only)
             count = len(result.contents)
             if result.cached:
                 print(f"이미 존재 (스킵)")
