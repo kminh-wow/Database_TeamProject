@@ -11,9 +11,10 @@ interface FolderSelectModalProps {
   courseId: string
   courseName: string
   onClose: () => void
+  onSaved?: (contentId: string) => void
 }
 
-export default function FolderSelectModal({ resource, courseId, courseName, onClose }: FolderSelectModalProps) {
+export default function FolderSelectModal({ resource, courseId, courseName, onClose, onSaved }: FolderSelectModalProps) {
   const { folders, saveResource, createFolder, user } = useApp()
   const [showCreate, setShowCreate] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -24,7 +25,7 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
     try {
       await saveResource(folderId, courseId, courseName, resource)
       toast.success(`"${folderName}"에 저장되었습니다!`)
-      onClose()
+      onSaved?.(resource.content_id)
     } catch (e: any) {
       if (e?.response?.status === 409) {
         toast.error('이미 저장된 자료입니다.')
@@ -43,7 +44,7 @@ export default function FolderSelectModal({ resource, courseId, courseName, onCl
       const folder = await createFolder(newFolderName.trim())
       await saveResource(folder.folder_id, courseId, courseName, resource)
       toast.success(`"${newFolderName}"에 저장되었습니다!`)
-      onClose()
+      onSaved?.(resource.content_id)
     } catch (e: any) {
       if (e?.response?.status !== 403) {
         toast.error('폴더 생성 또는 저장에 실패했습니다.')

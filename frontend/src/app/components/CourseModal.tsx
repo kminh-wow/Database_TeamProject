@@ -45,6 +45,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
   const [userLoading, setUserLoading] = useState(false)
   const [votes, setVotes] = useState<Record<string, 'like' | 'dislike' | null>>(() => ({ ..._voteCache }))
   const [folderTarget, setFolderTarget] = useState<ResourceItem | null>(null)
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())  // ← 추가
 
   useEffect(() => {
     setAiLoading(true)
@@ -102,6 +103,22 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
   }
   const courseTypeColor: Record<string, string> = {
     '전공필수': '#E53E3E', '전공기초': '#3182CE', '전공선택': '#38A169',
+  }
+
+  // 별 버튼 렌더 헬퍼
+  const StarButton = ({ contentId, resource }: { contentId: string; resource: ResourceItem }) => {
+    const isSaved = savedIds.has(contentId)
+    return (
+      <button
+        onClick={() => user ? setFolderTarget(resource) : navigate('/auth')}
+        className="mt-0.5 flex-shrink-0 transition-all cursor-pointer hover:scale-110"
+        style={{ color: isSaved ? '#F5A623' : '#CCC' }}
+        onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
+        onMouseLeave={e => { if (!isSaved) e.currentTarget.style.color = '#CCC' }}
+      >
+        <Star className="w-4 h-4" fill={isSaved ? '#F5A623' : 'none'} />
+      </button>
+    )
   }
 
   return (
@@ -184,7 +201,6 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
               </button>
             </div>
 
-            {/* 정렬 */}
             <div className="flex items-center gap-1">
               <ArrowUpDown className="w-3.5 h-3.5 text-gray-300" />
               <button
@@ -213,8 +229,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
           </div>
 
           {/* 탭 설명 */}
-          <div className="px-6 py-2 text-xs text-gray-400"
-            style={{ background: '#FAFAFA' }}>
+          <div className="px-6 py-2 text-xs text-gray-400" style={{ background: '#FAFAFA' }}>
             {tab === 'ai'
               ? '🤖 AI가 선별한 검증된 학습 자료입니다. 신뢰도 높은 콘텐츠를 우선 제공합니다.'
               : '👥 학우들이 직접 공유한 자료입니다. 좋아요로 신뢰도를 높여주세요.'}
@@ -236,9 +251,9 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                   <div key={i} className="rounded-xl border border-gray-100 p-4 transition-all hover:border-teal-200 hover:shadow-sm"
                     style={{ background: '#FAFAFA' }}>
                     <div className="flex items-start gap-3">
-                      {/* 북마크 */}
-                      <button
-                        onClick={() => user ? setFolderTarget({
+                      <StarButton
+                        contentId={item.content_id}
+                        resource={{
                           content_id: item.content_id,
                           title: item.title,
                           url: item.url,
@@ -246,66 +261,43 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                           source: 'ai',
                           like_count: item.like_count,
                           dislike_count: item.dislike_count,
-                        }) : navigate('/auth')}
-                        className="mt-0.5 flex-shrink-0 transition-colors cursor-pointer hover:scale-110"
-                        style={{ color: '#CCC' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#CCC' }}
-                      >
-                        <Star className="w-4 h-4" />
-                      </button>
-
-                      {/* 아이콘 */}
+                        }}
+                      />
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F0F0F0' }}>
                         {typeIcon(item.type)}
                       </div>
-
-                      {/* 내용 */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 leading-snug mb-1">
-                          {item.title}
-                        </p>
+                        <p className="text-sm font-semibold text-gray-800 leading-snug mb-1">{item.title}</p>
                         <div className="flex items-center gap-2 flex-wrap mb-2">
-                          <span className="text-xs px-2 py-0.5 rounded-md"
-                            style={{ background: '#F0F0F0', color: '#888' }}>
+                          <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#F0F0F0', color: '#888' }}>
                             {typeLabel(item.type)}
                           </span>
-                          <span className="text-xs px-2 py-0.5 rounded-md"
-                            style={{ background: '#E8F4F4', color: '#4A7C7E' }}>
+                          <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#E8F4F4', color: '#4A7C7E' }}>
                             🤖 AI 추천
                           </span>
                         </div>
                         <a href={item.url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs flex items-center gap-1 transition-colors"
-                          style={{ color: '#7AACAE' }}>
+                          className="text-xs flex items-center gap-1 transition-colors" style={{ color: '#7AACAE' }}>
                           자료 보기 <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
-
-                      {/* 피드백 */}
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => handleFeedback(item.content_id, 'like')}
+                        <button onClick={() => handleFeedback(item.content_id, 'like')}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[item.content_id] === 'like' ? '#EDF7ED' : '#F0F0F0',
                             color: votes[item.content_id] === 'like' ? '#3D8B3D' : '#888',
-                          }}
-                        >
-                          <ThumbsUp className="w-3 h-3" />
-                          {item.like_count}
+                          }}>
+                          <ThumbsUp className="w-3 h-3" />{item.like_count}
                         </button>
-                        <button
-                          onClick={() => handleFeedback(item.content_id, 'dislike')}
+                        <button onClick={() => handleFeedback(item.content_id, 'dislike')}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[item.content_id] === 'dislike' ? '#FDECEA' : '#F0F0F0',
                             color: votes[item.content_id] === 'dislike' ? '#B03A2E' : '#888',
-                          }}
-                        >
-                          <ThumbsDown className="w-3 h-3" />
-                          {item.dislike_count}
+                          }}>
+                          <ThumbsDown className="w-3 h-3" />{item.dislike_count}
                         </button>
                       </div>
                     </div>
@@ -331,71 +323,45 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                   <div key={resource.content_id} className="rounded-xl border border-gray-100 p-4"
                     style={{ background: '#FAFAFA' }}>
                     <div className="flex items-start gap-3">
-                      {/* 북마크 */}
-                      <button
-                        onClick={() => user ? setFolderTarget(resource) : navigate('/auth')}
-                        className="mt-0.5 flex-shrink-0 transition-colors cursor-pointer hover:scale-110"
-                        style={{ color: '#CCC' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
-                        onMouseLeave={e => { e.currentTarget.style.color = '#CCC' }}
-                      >
-                        <Star className="w-4 h-4" />
-                      </button>
-
-                      {/* 아이콘 */}
+                      <StarButton contentId={resource.content_id} resource={resource} />
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F0F0F0' }}>
                         {typeIcon(resource.type)}
                       </div>
-
-                      {/* 내용 */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 leading-snug mb-1">
-                          {resource.title}
-                        </p>
+                        <p className="text-sm font-semibold text-gray-800 leading-snug mb-1">{resource.title}</p>
                         {resource.description && (
                           <p className="text-xs text-gray-500 mb-1 leading-snug">{resource.description}</p>
                         )}
                         <div className="flex items-center gap-2 flex-wrap mb-2">
-                          <span className="text-xs px-2 py-0.5 rounded-md"
-                            style={{ background: '#F0F0F0', color: '#888' }}>
+                          <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#F0F0F0', color: '#888' }}>
                             {typeLabel(resource.type)}
                           </span>
-                          <span className="text-xs px-2 py-0.5 rounded-md"
-                            style={{ background: '#F5F0FF', color: '#7B5EA7' }}>
+                          <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#F5F0FF', color: '#7B5EA7' }}>
                             👥 사용자
                           </span>
                         </div>
                         <a href={resource.url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs flex items-center gap-1 transition-colors"
-                          style={{ color: '#7AACAE' }}>
+                          className="text-xs flex items-center gap-1 transition-colors" style={{ color: '#7AACAE' }}>
                           자료 보기 <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
-
-                      {/* 피드백 */}
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={() => handleFeedback(resource.content_id, 'like')}
+                        <button onClick={() => handleFeedback(resource.content_id, 'like')}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[resource.content_id] === 'like' ? '#EDF7ED' : '#F0F0F0',
                             color: votes[resource.content_id] === 'like' ? '#3D8B3D' : '#888',
-                          }}
-                        >
-                          <ThumbsUp className="w-3 h-3" />
-                          {resource.like_count}
+                          }}>
+                          <ThumbsUp className="w-3 h-3" />{resource.like_count}
                         </button>
-                        <button
-                          onClick={() => handleFeedback(resource.content_id, 'dislike')}
+                        <button onClick={() => handleFeedback(resource.content_id, 'dislike')}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer hover:brightness-95 active:scale-95"
                           style={{
                             background: votes[resource.content_id] === 'dislike' ? '#FDECEA' : '#F0F0F0',
                             color: votes[resource.content_id] === 'dislike' ? '#B03A2E' : '#888',
-                          }}
-                        >
-                          <ThumbsDown className="w-3 h-3" />
-                          {resource.dislike_count}
+                          }}>
+                          <ThumbsDown className="w-3 h-3" />{resource.dislike_count}
                         </button>
                       </div>
                     </div>
@@ -426,6 +392,10 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
           courseId={course.course_id}
           courseName={course.name}
           onClose={() => setFolderTarget(null)}
+          onSaved={(contentId) => {
+            setSavedIds(prev => new Set([...prev, contentId]))
+            setFolderTarget(null)
+          }}
         />
       )}
     </>
