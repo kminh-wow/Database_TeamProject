@@ -23,7 +23,10 @@ def search_courses(search: str = Query(..., min_length=1, description="검색 �
 @router.get("/curriculum/{department_name}", response_model=CurriculumGraphResponse)
 def get_curriculum(department_name: str):
     """커리큘럼 그래프 조회 (React Flow용 nodes + edges)"""
-    return course_service.get_curriculum_graph(department_name)
+    result = course_service.get_curriculum_graph(department_name)
+    if not result.nodes:
+        raise HTTPException(status_code=404, detail="학과를 찾을 수 없습니다.")
+    return result
 
 
 @router.get("/courses/{course_id}", response_model=CourseResponse)
