@@ -18,6 +18,20 @@ type SortType = 'likes' | 'recent'
 
 const _voteCache: Record<string, 'like' | 'dislike'> = {}
 
+function StarButton({ isSaved, onClick }: { isSaved: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-0.5 flex-shrink-0 transition-all cursor-pointer hover:scale-110"
+      style={{ color: isSaved ? '#F5A623' : '#CCC' }}
+      onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
+      onMouseLeave={e => { if (!isSaved) e.currentTarget.style.color = '#CCC' }}
+    >
+      <Star className="w-4 h-4" fill={isSaved ? '#F5A623' : 'none'} />
+    </button>
+  )
+}
+
 const typeIcon = (type: string) => {
   if (type === 'youtube') return <Youtube className="w-4 h-4" style={{ color: '#C0392B' }} />
   if (type === 'blog') return <FileText className="w-4 h-4" style={{ color: '#2980B9' }} />
@@ -35,7 +49,7 @@ const typeLabel = (type: string) => {
 
 export default function CourseModal({ course, onClose }: CourseModalProps) {
   const navigate = useNavigate()
-  const { user } = useApp()
+  const { user, savedContentIds } = useApp()
 
   const [tab, setTab] = useState<TabType>('ai')
   const [sort, setSort] = useState<SortType>('likes')
@@ -45,7 +59,6 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
   const [userLoading, setUserLoading] = useState(false)
   const [votes, setVotes] = useState<Record<string, 'like' | 'dislike' | null>>(() => ({ ..._voteCache }))
   const [folderTarget, setFolderTarget] = useState<ResourceItem | null>(null)
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())  // ← 추가
 
   useEffect(() => {
     setAiLoading(true)
@@ -103,22 +116,6 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
   }
   const courseTypeColor: Record<string, string> = {
     '전공필수': '#E53E3E', '전공기초': '#3182CE', '전공선택': '#38A169',
-  }
-
-  // 별 버튼 렌더 헬퍼
-  const StarButton = ({ contentId, resource }: { contentId: string; resource: ResourceItem }) => {
-    const isSaved = savedIds.has(contentId)
-    return (
-      <button
-        onClick={() => user ? setFolderTarget(resource) : navigate('/auth')}
-        className="mt-0.5 flex-shrink-0 transition-all cursor-pointer hover:scale-110"
-        style={{ color: isSaved ? '#F5A623' : '#CCC' }}
-        onMouseEnter={e => { e.currentTarget.style.color = '#F5A623' }}
-        onMouseLeave={e => { if (!isSaved) e.currentTarget.style.color = '#CCC' }}
-      >
-        <Star className="w-4 h-4" fill={isSaved ? '#F5A623' : 'none'} />
-      </button>
-    )
   }
 
   return (
@@ -252,8 +249,8 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                     style={{ background: '#FAFAFA' }}>
                     <div className="flex items-start gap-3">
                       <StarButton
-                        contentId={item.content_id}
-                        resource={{
+                        isSaved={savedContentIds.has(item.content_id)}
+                        onClick={() => user ? setFolderTarget({
                           content_id: item.content_id,
                           title: item.title,
                           url: item.url,
@@ -261,7 +258,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                           source: 'ai',
                           like_count: item.like_count,
                           dislike_count: item.dislike_count,
-                        }}
+                        }) : navigate('/auth')}
                       />
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F0F0F0' }}>
@@ -323,7 +320,10 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                   <div key={resource.content_id} className="rounded-xl border border-gray-100 p-4"
                     style={{ background: '#FAFAFA' }}>
                     <div className="flex items-start gap-3">
-                      <StarButton contentId={resource.content_id} resource={resource} />
+                      <StarButton
+                        isSaved={savedContentIds.has(resource.content_id)}
+                        onClick={() => user ? setFolderTarget(resource) : navigate('/auth')}
+                      />
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: '#F0F0F0' }}>
                         {typeIcon(resource.type)}
@@ -392,10 +392,7 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
           courseId={course.course_id}
           courseName={course.name}
           onClose={() => setFolderTarget(null)}
-          onSaved={(contentId) => {
-            setSavedIds(prev => new Set([...prev, contentId]))
-            setFolderTarget(null)
-          }}
+          onSaved={() => setFolderTarget(null)}
         />
       )}
     </>

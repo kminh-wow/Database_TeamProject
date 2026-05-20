@@ -22,6 +22,7 @@ interface AppContextType {
   // Folder (API-based)
   folders: Folder[]
   foldersLoading: boolean
+  savedContentIds: Set<string>
   createFolder: (name: string) => Promise<Folder>
   deleteFolder: (folderId: string) => Promise<void>
   saveResource: (folderId: string, courseId: string, courseName: string, resource: ResourceItem) => Promise<void>
@@ -36,6 +37,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true)
   const [folders, setFolders] = useState<Folder[]>([])
   const [foldersLoading, setFoldersLoading] = useState(false)
+  const [savedContentIds, setSavedContentIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -55,6 +57,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const data = await foldersApi.getFolders()
       setFolders(data)
+      if (data.length > 0) {
+        const allItems = await Promise.all(data.map(f => foldersApi.getItemsInFolder(f.folder_id)))
+        setSavedContentIds(new Set(allItems.flat().map(item => item.content_id)))
+      } else {
+        setSavedContentIds(new Set())
+      }
     } catch (e) {
       console.error('폴더 로딩 실패:', e)
     } finally {
@@ -94,6 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await signOut(auth)
     setFolders([])
+    setSavedContentIds(new Set())
   }
 
   const createFolder = async (name: string): Promise<Folder> => {
@@ -121,18 +130,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       course_id: courseId,
       course_name: courseName,
     })
+    setSavedContentIds(prev => new Set([...prev, resource.content_id]))
     await refreshFolders()
   }
 
   const unsaveResource = async (folderId: string, contentId: string) => {
     await foldersApi.removeItemFromFolder(folderId, contentId)
+    setSavedContentIds(prev => { const next = new Set(prev); next.delete(contentId); return next })
     await refreshFolders()
   }
 
   return (
     <AppContext.Provider value={{
       user, authLoading, login, register, logout,
-      folders, foldersLoading, createFolder, deleteFolder,
+      folders, foldersLoading, savedContentIds, createFolder, deleteFolder,
       saveResource, unsaveResource, refreshFolders,
     }}>
       {children}
