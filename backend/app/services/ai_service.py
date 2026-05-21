@@ -20,6 +20,9 @@ _course_locks_mutex = threading.Lock()
 
 _SPAM_KEYWORDS = re.compile(
     r"국비|학원|수강신청|프로모션|할인|부트캠프|내일배움카드|취업연계|무료수강|국가기간|내일배움"
+    r"|학점은행|독학사"
+    r"|입시|수시|정시|합격|입결|수능"
+    r"|특강|자격증|편입|방통대|오리엔테이션|캡스톤"
 )
 
 
@@ -53,20 +56,19 @@ def _extract_keywords_ai(course_name: str, description: str | None) -> list[str]
     if not description:
         return []
 
-    prompt = f"""대학교 전공 과목 학습 자료를 유튜브에서 검색하려 합니다.
-아래 과목 개요를 분석하여, 학생들이 가장 어려워하는 핵심 개념 3가지를 추출하고
-각각을 유튜브 검색어 형태로 만들어 주세요.
+    prompt = f"""[과목명]: {course_name}
+[개요]: {description}
 
-과목명: {course_name}
-개요: {description}
+위 대학 전공 과목의 개요를 읽고, 학부생이 중간/기말고사를 대비하기 위해 찾아볼 법한 \
+'순수 학술적 핵심 개념(이론, 알고리즘, 법칙 등)' 3가지만 추출해.
+
+[절대 금지 규칙]
+- '강의', '특강', '세미나', '캠페인', '프로젝트', '오리엔테이션', '수업' 같은 행위나 행사 관련 명사는 절대 포함하지 말 것.
+- 반드시 학문적인 전문 용어(개념) 위주로 뽑을 것.
+- 과목명 자체는 포함하지 말 것. 개념어만.
 
 JSON 문자열 배열만 반환 (설명 없이):
-["검색어1", "검색어2", "검색어3"]
-
-조건:
-- 각 검색어에 과목명 포함
-- 한국어, 전공 심화 개념 중심
-- 개론/입문이 아닌 구체적 메커니즘/알고리즘/원리"""
+["개념1", "개념2", "개념3"]"""
 
     for attempt in range(3):
         try:
@@ -186,7 +188,8 @@ def _fetch_youtube_videos(course_name: str, keywords: list[str] = [], populate_m
         f"{course_name} 튜토리얼",
         f"{course_name} 설명",
     ]
-    queries = keywords if keywords else fallback_queries
+    # Groq 키워드는 순수 개념어 → 과목명 앞에 붙여서 검색
+    queries = [f"{course_name} {kw}" for kw in keywords] if keywords else fallback_queries
 
     if populate_mode:
         video_ids = _youtube_search(queries[0], api_key, max_results=5)
@@ -217,7 +220,8 @@ def _fetch_naver_blogs(course_name: str, keywords: list[str] = []) -> list[dict]
     if not client_id or not client_secret:
         return []
 
-    query = keywords[0] if keywords else f"{course_name} 강의"
+    # 과목명 + 첫 번째 개념어 조합으로 검색 (순수 개념어만 검색하면 너무 일반적)
+    query = f"{course_name} {keywords[0]}" if keywords else f"{course_name} 개념"
 
     try:
         r = httpx.get(
@@ -235,7 +239,10 @@ def _fetch_naver_blogs(course_name: str, keywords: list[str] = []) -> list[dict]
             link = item.get("link", "")
             if not title or not link:
                 continue
-            if _SPAM_KEYWORDS.search(title) or _SPAM_KEYWORDS.search(desc):
+            # 화이트리스트: Groq 개념 키워드가 title/desc에 있으면 스팸 필터 면제
+            text = title + " " + desc
+            whitelisted = keywords and any(kw in text for kw in keywords if len(kw) >= 3)
+            if not whitelisted and _SPAM_KEYWORDS.search(text):
                 continue
             result.append({"title": title, "url": link, "type": "blog"})
             if len(result) >= 3:
