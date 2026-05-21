@@ -5,7 +5,10 @@
 """
 import sys
 import argparse
+import io
 from dotenv import load_dotenv
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 load_dotenv()
 sys.path.insert(0, ".")

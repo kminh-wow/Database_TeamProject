@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 
 const ADMIN_EMAILS = import.meta.env.VITE_ADMIN_EMAILS
   ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim())
-  : ['akask9635@gmail.com']
+  : ['akask9635@gmail.com', 'rkddlstjs707@gmail.com', 'kminh9635@daum.net', 'rkddlstjs707@soongsil.ac.kr']
 
 const typeIcon = (type: string) => {
   if (type === 'youtube') return <Youtube className="w-4 h-4" style={{ color: '#C0392B' }} />
