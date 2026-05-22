@@ -92,7 +92,7 @@ export default function Auth() {
                 </div>
 
                 <h1 className="text-2xl font-bold">
-                  {mode === 'login' ? '다시 만나요 👋' : 'CourseNest에 오신걸 환영해요 🎉'}
+                  {mode === 'login' ? '반가워요 👋' : 'CourseNest에 오신걸 환영해요 🎉'}
                 </h1>
                 <p className="text-sm text-gray-500 mt-2">
                   {mode === 'login' ? '학습 여정을 계속 이어나가세요' : '나만의 학습 공간을 만들어보세요'}
