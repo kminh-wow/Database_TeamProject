@@ -18,14 +18,17 @@ _client: Groq | None = None
 _course_locks: dict[str, threading.Lock] = {}
 _course_locks_mutex = threading.Lock()
 
-_SPAM_KEYWORDS = re.compile(
-    r"국비|학원|수강신청|프로모션|할인|부트캠프|내일배움카드|취업연계|무료수강|국가기간|내일배움"
-    r"|학점은행|독학사"
-    r"|입시|수시|정시|합격|입결|수능"
-    r"|특강|자격증|편입|방통대|오리엔테이션|캡스톤"
-    r"|과외|경시대회|과학고|영재고"
+# 화이트리스트 무시 - 절대 통과 불가
+_HARD_SPAM = re.compile(
+    r"자격증|합격|학원|국비|학점은행|독학사|수능|입시|수시|정시|입결"
     r"|고1|고2|고3|중학교|중학생|고등학생|초등학생"
+    r"|과외|경시대회|과학고|영재고"
     r"|취준|취직|공무원|사교육|인강"
+    r"|부트캠프|내일배움카드|내일배움|국가기간|무료수강|취업연계"
+)
+# 화이트리스트로 면제 가능
+_SOFT_SPAM = re.compile(
+    r"특강|캡스톤|오리엔테이션|방통대|편입|프로모션|할인|수강신청"
 )
 
 
@@ -245,7 +248,9 @@ def _fetch_naver_blogs(course_name: str, keywords: list[str] = []) -> list[dict]
             # 화이트리스트: Groq 개념 키워드가 title/desc에 있으면 스팸 필터 면제
             text = title + " " + desc
             whitelisted = keywords and any(kw in text for kw in keywords if len(kw) >= 5)
-            if not whitelisted and _SPAM_KEYWORDS.search(text):
+            if _HARD_SPAM.search(text):
+                continue
+            if not whitelisted and _SOFT_SPAM.search(text):
                 continue
             result.append({"title": title, "url": link, "type": "blog"})
             if len(result) >= 3:
