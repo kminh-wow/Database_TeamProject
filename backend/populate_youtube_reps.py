@@ -22,11 +22,11 @@ def get_rep_courses() -> list[dict]:
     """각 학과 × 학년에서 선후수 관계 가장 많은 과목 1개씩 선택"""
     with get_session() as session:
         result = session.run("""
-            MATCH (dept:Department)<-[:BELONGS_TO]-(c:Course)
+            MATCH (c:Course)-[:BELONGS_TO]->(dept:Department)
             OPTIONAL MATCH (c)-[:PREREQUISITE_OF]-(related)
             RETURN dept.name AS dept_name, c.courseId AS course_id,
                    c.nameKr AS name, c.descKr AS description,
-                   c.year AS year, count(related) AS rel_count
+                   c.grade AS year, count(related) AS rel_count
         """)
         rows = [dict(r) for r in result]
 
