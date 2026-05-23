@@ -67,6 +67,7 @@ def add_youtube_only(course_id: str, course_name: str, description: str | None) 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="대상 과목 목록만 출력")
+    parser.add_argument("--limit", type=int, default=0, help="최대 처리 과목 수 (0=무제한)")
     args = parser.parse_args()
 
     courses = get_rep_courses()
@@ -81,6 +82,11 @@ def main():
                 print(f"\n[{cur_dept}]")
             print(f"  {c['year']}학년: {c['name']} ({c['course_id']}) - 선후수 {c['rel_count']}개")
         return
+
+    if args.limit > 0:
+        courses = courses[:args.limit]
+        total = len(courses)
+        print(f"(--limit {args.limit} 적용 → {total}개 처리)\n")
 
     success = skip = fail = 0
     for i, c in enumerate(courses, 1):
