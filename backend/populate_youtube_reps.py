@@ -23,21 +23,23 @@ def get_rep_courses() -> list[dict]:
     with get_session() as session:
         result = session.run("""
             MATCH (dept:Department)<-[:BELONGS_TO]-(c:Course)
-            WHERE c.year IS NOT NULL
             OPTIONAL MATCH (c)-[:PREREQUISITE_OF]-(related)
-            WITH dept.name AS dept_name, c.year AS year, c, count(related) AS rel_count
-            ORDER BY dept_name, year, rel_count DESC
-            WITH dept_name, year, collect({
-                course_id: c.courseId,
-                name: c.nameKr,
-                description: c.descKr,
-                rel_count: rel_count
-            })[0] AS top
-            RETURN dept_name, year, top.course_id AS course_id, top.name AS name,
-                   top.description AS description, top.rel_count AS rel_count
-            ORDER BY dept_name, year
+            RETURN dept.name AS dept_name, c.courseId AS course_id,
+                   c.nameKr AS name, c.descKr AS description,
+                   c.year AS year, count(related) AS rel_count
         """)
-        return [dict(r) for r in result]
+        rows = [dict(r) for r in result]
+
+    # Python에서 그룹핑: (dept_name, year) 기준으로 rel_count 최대 과목 선택
+    groups: dict[tuple, dict] = {}
+    for r in rows:
+        if r["year"] is None:
+            continue
+        key = (r["dept_name"], r["year"])
+        if key not in groups or r["rel_count"] > groups[key]["rel_count"]:
+            groups[key] = r
+
+    return sorted(groups.values(), key=lambda x: (x["dept_name"], x["year"]))
 
 
 def has_youtube_content(course_id: str) -> bool:
