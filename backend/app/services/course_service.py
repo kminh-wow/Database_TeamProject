@@ -128,27 +128,40 @@ def get_curriculum_graph(department_name: str) -> CurriculumGraphResponse:
     sem_counter: dict[tuple, int] = {}
     nodes: list[FlowNode] = []
 
-    for c in courses:
-        year = c.get("grade") or 1
-        semester = c.get("semester") or "1학기"
+    def _add_node(course_id: str, name_kr: str, year: int, semester: str,
+                  course_type, credits):
         key = (year, semester)
         idx = sem_counter.get(key, 0)
         sem_counter[key] = idx + 1
         col = SEMESTER_COL.get(key, (year - 1) * 2)
-
         nodes.append(
             FlowNode(
-                id=c["courseId"],
+                id=course_id,
                 data=NodeData(
-                    label=c["nameKr"],
+                    label=name_kr,
                     year=year,
                     semester=semester,
-                    course_type=c.get("type"),
-                    credits=c.get("credits"),
+                    course_type=course_type,
+                    credits=credits,
                 ),
                 position={"x": col * COL_X_GAP, "y": idx * NODE_Y_GAP},
             )
         )
+
+    for c in courses:
+        year = c.get("grade") or 1
+        semesters_list = c.get("semesters")  # ["1학기", "2학기"] or None
+
+        if semesters_list and len(semesters_list) >= 2:
+            # 두 학기 모두 개설 → 노드 2개 생성
+            _add_node(c["courseId"], c["nameKr"], year, "1학기",
+                      c.get("type"), c.get("credits"))
+            _add_node(f"{c['courseId']}_2학기", c["nameKr"], year, "2학기",
+                      c.get("type"), c.get("credits"))
+        else:
+            semester = c.get("semester") or "1학기"
+            _add_node(c["courseId"], c["nameKr"], year, semester,
+                      c.get("type"), c.get("credits"))
 
     edges: list[FlowEdge] = [
         FlowEdge(id=f"e{src}-{tgt}", source=src, target=tgt)
