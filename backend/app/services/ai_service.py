@@ -169,8 +169,14 @@ def _youtube_search(query: str, api_key: str, max_results: int = 5) -> list[str]
         return []
 
 
-def _pick_videos_by_duration(items: list[dict], seen_ids: set, limit: int = 1) -> list[dict]:
-    """duration >= 3분 필터 후 최대 limit개 반환"""
+def _pick_videos_by_duration(
+    items: list[dict],
+    seen_ids: set,
+    limit: int = 1,
+    required_keywords: list[str] | None = None,
+) -> list[dict]:
+    """duration >= 3분 필터 후 최대 limit개 반환.
+    required_keywords 있으면 제목에 하나라도 포함돼야 통과."""
     result = []
     for item in items:
         video_id = item.get("id", "")
@@ -181,6 +187,8 @@ def _pick_videos_by_duration(items: list[dict], seen_ids: set, limit: int = 1) -
             continue
         title = item.get("snippet", {}).get("title", "")
         if _HARD_SPAM.search(title):
+            continue
+        if required_keywords and not any(kw in title for kw in required_keywords if len(kw) >= 2):
             continue
         if video_id and title:
             result.append({
@@ -210,23 +218,24 @@ def _fetch_youtube_videos(course_name: str, keywords: list[str] = [], populate_m
     # Groq 키워드는 순수 개념어 → 과목명 앞에 붙여서 검색
     queries = [f"{course_name} {kw}" for kw in keywords] if keywords else fallback_queries
 
+    req_kw = keywords if keywords else None
     if populate_mode:
-        video_ids = _youtube_search(queries[0], api_key, max_results=5)
+        video_ids = _youtube_search(queries[0], api_key, max_results=10)
         if not video_ids:
             return []
         items = _youtube_get_videos_with_duration(video_ids, api_key)
-        return _pick_videos_by_duration(items, set(), limit=2)
+        return _pick_videos_by_duration(items, set(), limit=2, required_keywords=req_kw)
     else:
         result = []
         seen_ids: set[str] = set()
         for q in queries[:3]:
-            video_ids = _youtube_search(q, api_key, max_results=5)
+            video_ids = _youtube_search(q, api_key, max_results=10)
             if not video_ids:
                 continue
             items = _youtube_get_videos_with_duration(
                 [vid for vid in video_ids if vid not in seen_ids], api_key
             )
-            picked = _pick_videos_by_duration(items, seen_ids, limit=1)
+            picked = _pick_videos_by_duration(items, seen_ids, limit=1, required_keywords=req_kw)
             for v in picked:
                 seen_ids.add(v["url"].split("v=")[-1])
                 result.append(v)
