@@ -193,9 +193,9 @@ def _fetch_youtube_videos(course_name: str, keywords: list[str] = [], populate_m
         return []
 
     fallback_queries = [
+        f"{course_name} 전공 요약",
+        f"{course_name} 중간고사 필기",
         f"{course_name} 개념 정리",
-        f"{course_name} 튜토리얼",
-        f"{course_name} 설명",
     ]
     # Groq 키워드는 순수 개념어 → 과목명 앞에 붙여서 검색
     queries = [f"{course_name} {kw}" for kw in keywords] if keywords else fallback_queries
