@@ -31,7 +31,7 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
-  const [filterSource, setFilterSource] = useState<'all' | 'ai' | 'user'>('all')
+  const [filterSource, setFilterSource] = useState<'all' | 'ai' | 'ai_syllabus' | 'user'>('all')
   const [filterType, setFilterType] = useState<'all' | 'youtube' | 'blog' | 'pdf'>('all')
   const [search, setSearch] = useState('')
 
@@ -179,11 +179,11 @@ export default function AdminPage() {
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-teal-400 w-56"
         />
         <div className="flex items-center gap-1">
-          {(['all', 'ai', 'user'] as const).map(s => (
+          {(['all', 'ai', 'ai_syllabus', 'user'] as const).map(s => (
             <button key={s} onClick={() => setFilterSource(s)}
               className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{ background: filterSource === s ? '#E8F4F4' : '#F5F5F5', color: filterSource === s ? '#4A7C7E' : '#888' }}>
-              {s === 'all' ? '전체' : s === 'ai' ? '🤖 AI' : '👥 사용자'}
+              {s === 'all' ? '전체' : s === 'ai' ? '🤖 AI' : s === 'ai_syllabus' ? '📋 실라버스' : '👥 사용자'}
             </button>
           ))}
         </div>
@@ -267,10 +267,10 @@ export default function AdminPage() {
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-0.5 rounded-full"
                         style={{
-                          background: item.source === 'ai' ? '#E8F4F4' : '#F5F0FF',
-                          color: item.source === 'ai' ? '#4A7C7E' : '#7B5EA7',
+                          background: item.source === 'ai' ? '#E8F4F4' : item.source === 'ai_syllabus' ? '#FFF7E6' : '#F5F0FF',
+                          color: item.source === 'ai' ? '#4A7C7E' : item.source === 'ai_syllabus' ? '#B07D2A' : '#7B5EA7',
                         }}>
-                        {item.source === 'ai' ? '🤖 AI' : '👥 사용자'}
+                        {item.source === 'ai' ? '🤖 AI' : item.source === 'ai_syllabus' ? '📋 실라버스' : '👥 사용자'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-gray-500">

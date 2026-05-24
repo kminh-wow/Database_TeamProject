@@ -5,7 +5,7 @@ export interface AdminContentItem {
   title: string
   url: string
   type: string
-  source: 'ai' | 'user'
+  source: 'ai' | 'ai_syllabus' | 'user'
   course_id: string
   course_name: string
   like_count: number

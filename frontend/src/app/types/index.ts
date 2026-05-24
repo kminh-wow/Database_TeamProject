@@ -45,7 +45,7 @@ export interface ContentItem {
   type: string
   difficulty?: string
   description?: string
-  source: 'ai' | 'user'
+  source: 'ai' | 'ai_syllabus' | 'user'
   like_count: number
   dislike_count: number
   created_at?: string
@@ -62,7 +62,7 @@ export interface ResourceItem {
   title: string
   url: string
   type: string
-  source: 'ai' | 'user'
+  source: 'ai' | 'ai_syllabus' | 'user'
   description?: string
   like_count: number
   dislike_count: number
