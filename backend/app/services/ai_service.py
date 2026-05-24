@@ -58,13 +58,23 @@ def _parse_duration_seconds(iso_duration: str) -> int:
     return h * 3600 + m * 60 + s
 
 
-def _extract_keywords_ai(course_name: str, description: str | None) -> list[str]:
-    """Groq로 과목 개요 분석 → YouTube 검색어 3개 추출 (CoT 방식)"""
-    if not description:
+def _extract_keywords_ai(
+    course_name: str,
+    description: str | None,
+    syllabus: str | None = None,
+) -> list[str]:
+    """Groq로 과목 개요/강의계획서 분석 → YouTube 검색어 3개 추출 (CoT 방식)"""
+    if not description and not syllabus:
         return []
 
+    context_parts = []
+    if description:
+        context_parts.append(f"[개요]: {description}")
+    if syllabus:
+        context_parts.append(f"[강의계획서]: {syllabus[:1500]}")
+
     prompt = f"""[과목명]: {course_name}
-[개요]: {description}
+{chr(10).join(context_parts)}
 
 위 대학 전공 과목의 개요를 읽고, 학부생이 중간/기말고사를 대비하기 위해 찾아볼 법한 \
 '순수 학술적 핵심 개념(이론, 알고리즘, 법칙 등)' 3가지만 추출해.
@@ -277,9 +287,10 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
         result = session.run(
             """
             MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
-            WHERE ct.source = 'ai'
+            WHERE ct.source IN ['ai', 'ai_syllabus']
             RETURN ct.content_id AS content_id, ct.title AS title, ct.url AS url,
-                   ct.type AS type, ct.like_count AS like_count, ct.dislike_count AS dislike_count,
+                   ct.type AS type, ct.source AS source,
+                   ct.like_count AS like_count, ct.dislike_count AS dislike_count,
                    ct.created_at AS created_at
             """,
             course_id=course_id,
@@ -293,7 +304,7 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
                 title=r["title"],
                 url=r["url"],
                 type=r["type"],
-                source="ai",
+                source=r["source"],
                 like_count=r["like_count"] or 0,
                 dislike_count=r["dislike_count"] or 0,
                 created_at=r["created_at"],
@@ -302,7 +313,11 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
         ]
 
 
-def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[ContentItem]:
+def _save_and_return_contents(
+    course_id: str,
+    raw_items: list[dict],
+    source: str = "ai",
+) -> list[ContentItem]:
     if not raw_items:
         return []
     now = datetime.utcnow().isoformat()
@@ -325,7 +340,7 @@ def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[Con
                 title: item.title,
                 url: item.url,
                 type: item.type,
-                source: 'ai',
+                source: $source,
                 like_count: 0,
                 dislike_count: 0,
                 created_at: $now,
@@ -335,6 +350,7 @@ def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[Con
             """,
             course_id=course_id,
             items=items_with_ids,
+            source=source,
             now=now,
         )
     return [
@@ -343,7 +359,7 @@ def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[Con
             title=item["title"],
             url=item["url"],
             type=item["type"],
-            source="ai",
+            source=source,
             like_count=0,
             dislike_count=0,
             created_at=now,
@@ -355,11 +371,13 @@ def _save_and_return_contents(course_id: str, raw_items: list[dict]) -> list[Con
 def delete_all_ai_contents() -> int:
     with get_session() as session:
         count_result = session.run(
-            "MATCH (ct:Content {source: 'ai'}) RETURN count(ct) AS cnt"
+            "MATCH (ct:Content) WHERE ct.source IN ['ai', 'ai_syllabus'] RETURN count(ct) AS cnt"
         )
         cnt = count_result.single()["cnt"]
         if cnt > 0:
-            session.run("MATCH (ct:Content {source: 'ai'}) DETACH DELETE ct")
+            session.run(
+                "MATCH (ct:Content) WHERE ct.source IN ['ai', 'ai_syllabus'] DETACH DELETE ct"
+            )
         return cnt
 
 
@@ -367,7 +385,8 @@ def delete_cached_contents(course_id: str) -> int:
     with get_session() as session:
         count_result = session.run(
             """
-            MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content {source: 'ai'})
+            MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
+            WHERE ct.source IN ['ai', 'ai_syllabus']
             RETURN count(ct) AS cnt
             """,
             course_id=course_id,
@@ -376,7 +395,8 @@ def delete_cached_contents(course_id: str) -> int:
         if cnt > 0:
             session.run(
                 """
-                MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content {source: 'ai'})
+                MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
+                WHERE ct.source IN ['ai', 'ai_syllabus']
                 DETACH DELETE ct
                 """,
                 course_id=course_id,
