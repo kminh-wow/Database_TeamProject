@@ -272,8 +272,12 @@ export default function CourseModal({ course, onClose }: CourseModalProps) {
                           <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#F0F0F0', color: '#888' }}>
                             {typeLabel(item.type)}
                           </span>
-                          <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: '#E8F4F4', color: '#4A7C7E' }}>
-                            🤖 AI 추천
+                          <span className="text-xs px-2 py-0.5 rounded-md"
+                            style={{
+                              background: item.source === 'ai_syllabus' ? '#FFF7E6' : '#E8F4F4',
+                              color: item.source === 'ai_syllabus' ? '#B07D2A' : '#4A7C7E',
+                            }}>
+                            {item.source === 'ai_syllabus' ? '📋 실라버스 기반' : '🤖 AI 추천'}
                           </span>
                         </div>
                         <a href={item.url} target="_blank" rel="noopener noreferrer"
