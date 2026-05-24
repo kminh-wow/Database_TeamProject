@@ -24,16 +24,20 @@ from app.services.ai_service import (
 )
 
 
+_SKIP_NAMES = {"캡스톤디자인", "고급캡스톤디자인"}
+
+
 def get_syllabus_courses() -> list[dict]:
     with get_session() as session:
         result = session.run("""
             MATCH (c:Course)
             WHERE c.syllabusKr IS NOT NULL
+              AND NOT c.nameKr IN $skip_names
             RETURN c.courseId AS course_id, c.nameKr AS name,
                    c.descKr AS description, c.syllabusKr AS syllabus,
                    c.grade AS grade, c.semester AS semester
             ORDER BY c.grade, c.semester, c.nameKr
-        """)
+        """, skip_names=list(_SKIP_NAMES))
         return [dict(r) for r in result]
 
 
