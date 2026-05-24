@@ -229,15 +229,15 @@ def _fetch_naver_blogs(course_name: str, keywords: list[str] = []) -> list[dict]
     if not client_id or not client_secret:
         return []
 
-    # 키워드 있으면 과목명+키워드, 없으면 대학생 쿼리 순서로 시도
-    queries = (
-        [f"{course_name} {keywords[0]}"] if keywords
-        else [
-            f"{course_name} 전공 요약",
-            f"{course_name} 중간고사 필기",
-            f"{course_name} 개념 정리",
-        ]
-    )
+    # 키워드 쿼리 우선, 실패 시 대학생 쿼리로 순서대로 시도
+    queries = []
+    if keywords:
+        queries.append(f"{course_name} {keywords[0]}")
+    queries += [
+        f"{course_name} 전공 요약",
+        f"{course_name} 중간고사 필기",
+        f"{course_name} 개념 정리",
+    ]
 
     for query in queries:
         try:
