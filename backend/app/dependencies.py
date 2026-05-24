@@ -7,7 +7,7 @@ bearer_scheme = HTTPBearer()
 
 _ADMIN_EMAILS = (
     {e.strip() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()}
-    or {"akask9635@gmail.com", "rkddlstjs707@gmail.com", "kminh9635@daum.net", "rkddlstjs707@soongsil.ac.kr"}
+    or {"akask9635@gmail.com", "rkddlstjs707@gmail.com", "kminh9635@daum.net", "rkddlstjs707@soongsil.ac.kr", "glore3293@gmail.com"}
 )
 
 
