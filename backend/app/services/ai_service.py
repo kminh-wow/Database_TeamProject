@@ -170,6 +170,8 @@ def _pick_videos_by_duration(items: list[dict], seen_ids: set, limit: int = 1) -
         if _parse_duration_seconds(duration_str) < _MIN_DURATION_SEC:
             continue
         title = item.get("snippet", {}).get("title", "")
+        if _HARD_SPAM.search(title):
+            continue
         if video_id and title:
             result.append({
                 "title": title,
