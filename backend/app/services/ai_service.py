@@ -229,38 +229,47 @@ def _fetch_naver_blogs(course_name: str, keywords: list[str] = []) -> list[dict]
     if not client_id or not client_secret:
         return []
 
-    # 과목명 + 첫 번째 개념어 조합으로 검색 (순수 개념어만 검색하면 너무 일반적)
-    query = f"{course_name} {keywords[0]}" if keywords else f"{course_name} 개념"
+    # 키워드 있으면 과목명+키워드, 없으면 대학생 쿼리 순서로 시도
+    queries = (
+        [f"{course_name} {keywords[0]}"] if keywords
+        else [
+            f"{course_name} 전공 요약",
+            f"{course_name} 중간고사 필기",
+            f"{course_name} 개념 정리",
+        ]
+    )
 
-    try:
-        r = httpx.get(
-            "https://openapi.naver.com/v1/search/blog",
-            params={"query": query, "display": 8, "sort": "sim"},
-            headers={"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret},
-            timeout=10,
-        )
-        if r.status_code != 200:
-            return []
-        result = []
-        for item in r.json().get("items", []):
-            title = re.sub(r"<[^>]+>", "", html.unescape(item.get("title", "")))
-            desc = re.sub(r"<[^>]+>", "", html.unescape(item.get("description", "")))
-            link = item.get("link", "")
-            if not title or not link:
+    for query in queries:
+        try:
+            r = httpx.get(
+                "https://openapi.naver.com/v1/search/blog",
+                params={"query": query, "display": 8, "sort": "sim"},
+                headers={"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret},
+                timeout=10,
+            )
+            if r.status_code != 200:
                 continue
-            # 화이트리스트: Groq 개념 키워드가 title/desc에 있으면 스팸 필터 면제
-            text = title + " " + desc
-            whitelisted = keywords and any(kw in text for kw in keywords if len(kw) >= 5)
-            if _HARD_SPAM.search(text):
-                continue
-            if not whitelisted and _SOFT_SPAM.search(text):
-                continue
-            result.append({"title": title, "url": link, "type": "blog"})
-            if len(result) >= 3:
-                break
-        return result
-    except Exception:
-        return []
+            result = []
+            for item in r.json().get("items", []):
+                title = re.sub(r"<[^>]+>", "", html.unescape(item.get("title", "")))
+                desc = re.sub(r"<[^>]+>", "", html.unescape(item.get("description", "")))
+                link = item.get("link", "")
+                if not title or not link:
+                    continue
+                text = title + " " + desc
+                whitelisted = keywords and any(kw in text for kw in keywords if len(kw) >= 5)
+                if _HARD_SPAM.search(text):
+                    continue
+                if not whitelisted and _SOFT_SPAM.search(text):
+                    continue
+                result.append({"title": title, "url": link, "type": "blog"})
+                if len(result) >= 3:
+                    break
+            if result:
+                return result
+        except Exception:
+            continue
+    return []
 
 
 def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
