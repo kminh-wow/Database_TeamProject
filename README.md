@@ -1,6 +1,6 @@
 # CourseNest
 
-숭실대학교 IT학과 커리큘럼을 그래프로 시각화하고, 과목별 학습 자료를 추천하는 서비스
+숭실대학교 전 학과의 교과과정을 그래프로 시각화하고, AI 추천 및 학생들이 직접 등록하는 크라우드소싱 방식으로 과목별 학습 자료를 제공하는 서비스
 
 ---
 
@@ -63,7 +63,9 @@ Database_TeamProject/
     │   │   ├── ai_service.py    # AI 추천 파이프라인
     │   │   └── resource_service.py
     │   └── schemas/
-    ├── populate_v2.py           # AI 콘텐츠 pre-populate 스크립트
+    ├── populate_contents.py     # AI 콘텐츠 일괄 생성 스크립트
+    ├── populate_syllabus_contents.py  # 실라버스 기반 콘텐츠 생성
+    ├── export_course_contents.py      # 과목×콘텐츠 현황 CSV 출력
     ├── requirements.txt
     └── .env
 ```
@@ -190,17 +192,20 @@ Naver Blog Search API
 Neo4j에 Content 노드로 캐싱
 ```
 
-**Pre-populate 스크립트** (`populate_v2.py`)
+**Pre-populate 스크립트**
 
 ```bash
 cd backend
 source venv/bin/activate
 
-# Phase 1: Naver만으로 전체 과목 빠르게 채우기 (1~2일)
-python3 populate_v2.py --naver-only --all
+# 전체 과목 AI 콘텐츠 일괄 생성 (캐싱된 과목은 자동 스킵)
+python3 populate_contents.py
 
-# Phase 2: YouTube 점진적 추가 (90과목/일, YouTube quota 제한)
-python3 populate_v2.py          # 매일 실행
+# 실라버스(강의계획서) 기반 콘텐츠 생성
+python3 populate_syllabus_contents.py
+
+# 현재 DB 콘텐츠 현황 CSV 출력
+python3 export_course_contents.py
 ```
 
 ---
@@ -226,7 +231,7 @@ python3 populate_v2.py          # 매일 실행
 # EC2 접속: AWS 콘솔 → EC2 Instance Connect
 
 cd ~/Database_TeamProject
-git pull origin dev
+git pull origin main
 
 # 프론트 빌드 (변경 시)
 cd frontend && npm run build
@@ -238,20 +243,3 @@ sudo systemctl restart coursenest
 sudo systemctl status coursenest
 ```
 
----
-
-## 브랜치 전략
-
-| 브랜치 | 용도 |
-|--------|------|
-| `main` | 최종 배포용 |
-| `dev` | 통합 개발용 |
-| `feature/xxx` | 기능 개발 |
-
-1. `main` 직접 push ❌
-2. `feature/` 브랜치에서 작업 → `dev` 머지
-3. 최종 완성 → `main` 머지
-
----
-
-모르면 AI한테 물어봅시다 !!
