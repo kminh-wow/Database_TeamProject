@@ -312,7 +312,7 @@ def _fetch_cached_contents(course_id: str) -> list[ContentItem] | None:
         result = session.run(
             """
             MATCH (c:Course {courseId: $course_id})-[:HAS_CONTENT]->(ct:Content)
-            WHERE ct.source IN ['ai', 'ai_syllabus']
+            WHERE ct.source IN ['ai', 'ai_syllabus'] AND coalesce(ct.dislike_count, 0) < 3
             RETURN ct.content_id AS content_id, ct.title AS title, ct.url AS url,
                    ct.type AS type, ct.source AS source,
                    ct.like_count AS like_count, ct.dislike_count AS dislike_count,
