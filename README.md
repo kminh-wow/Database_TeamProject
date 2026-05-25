@@ -231,6 +231,39 @@ python3 export_course_contents.py
 
 ---
 
+## 팀원 역할
+
+**강인선**
+- UI 프로토타입 제작
+- 프로토타입 기반 프론트엔드 전체 구현 (React + TypeScript)
+- Firebase Authentication 연동 및 전역 상태 관리
+- 백엔드 API 연동
+- React Flow 커리큘럼 그래프 구현
+- 폴더·즐겨찾기 기능 구현 (MyStudyRoom)
+
+**Mariam**
+- UI 디자인 참여
+- 프론트엔드 개발 보조
+- 발표자료 제작
+
+**강승원**
+- DB 설계
+- 강의계획서 등 관련 자료 탐색 및 수집
+- 백엔드 개발 보조
+- AI 추천 콘텐츠 품질 검수 및 데이터 확인
+
+**김민혁**
+- 백엔드 전체 구조 설계 및 구현 (FastAPI + Neo4j + Firebase)
+- AI 콘텐츠 추천 파이프라인 구현 (Groq 키워드 추출 → YouTube + Naver 검색 → 스팸 필터링 → Neo4j 캐싱)
+- 실라버스 기반 콘텐츠 생성 파이프라인 구현
+- 유저 자료 등록·피드백(좋아요/싫어요) API 구현
+- 북마크 폴더 API 구현 (Firebase Firestore)
+- 관리자 API 구현 (콘텐츠 관리)
+- AWS EC2 배포 환경 구성 (Nginx + systemd)
+- 싫어요 누적 기반 콘텐츠 자동 숨김 구현
+
+---
+
 ## 기대 효과
 
 - **학업 성취도** — 맞춤형 자료 추천 시 전통적 방식 대비 시험 점수 15%↑ *(Chen, David Publishing, 2025)*
