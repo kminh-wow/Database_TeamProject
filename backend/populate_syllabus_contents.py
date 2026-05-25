@@ -56,8 +56,8 @@ def has_syllabus_content(course_id: str) -> bool:
 
 def generate_syllabus_contents(course_id: str, course_name: str, description: str | None, syllabus: str) -> int:
     keywords = _extract_keywords_ai(course_name, description, syllabus=syllabus)
-    raw = _fetch_youtube_videos(course_name, keywords, populate_mode=True)
-    raw += _fetch_naver_blogs(course_name, keywords)
+    raw = _fetch_naver_blogs(course_name, keywords)
+    raw += _fetch_youtube_videos(course_name, keywords, populate_mode=True)
     if not raw:
         return 0
     saved = _save_and_return_contents(course_id, raw, source="ai_syllabus")
