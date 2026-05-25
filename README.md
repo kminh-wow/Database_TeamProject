@@ -262,11 +262,12 @@ python3 export_course_contents.py
 - 백엔드 API 연동
 - React Flow 커리큘럼 그래프 구현
 - 폴더·즐겨찾기 기능 구현 (MyStudyRoom)
+- 발표자료 제작
 
 **Mariam**
 - UI 디자인 참여
 - 프론트엔드 개발 보조
-- 발표자료 제작
+- 발표자료 제작 참여
 
 **강승원**
 - DB 설계
