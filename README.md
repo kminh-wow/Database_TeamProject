@@ -21,28 +21,52 @@
 
 ```
 Database_TeamProject/
-├── frontend/               # React 프론트엔드
+├── frontend/
+│   ├── src/
+│   │   └── app/
+│   │       ├── api/
+│   │       │   ├── client.ts        # axios 인스턴스 + 인터셉터
+│   │       │   ├── curriculum.ts    # 학과/커리큘럼 API
+│   │       │   ├── contents.ts      # AI 추천 콘텐츠 API
+│   │       │   ├── resources.ts     # 유저 자료 API
+│   │       │   └── folders.ts       # 북마크 폴더 API
+│   │       ├── components/
+│   │       │   ├── CourseModal.tsx   # 과목 클릭 모달 (AI추천/유저자료)
+│   │       │   └── FolderSelectModal.tsx
+│   │       ├── context/
+│   │       │   └── AppContext.tsx    # Firebase 인증 + 전역 상태
+│   │       ├── pages/
+│   │       │   ├── Home.tsx          # 학과 선택
+│   │       │   ├── CurriculumGraph.tsx  # 선후수 그래프
+│   │       │   ├── Auth.tsx          # 로그인/회원가입
+│   │       │   ├── SubmitResource.tsx   # 자료 공유
+│   │       │   └── MyStudyRoom.tsx   # 폴더/즐겨찾기
+│   │       ├── types/
+│   │       │   └── index.ts          # 공통 타입 정의
+│   │       └── routes.tsx
+│   ├── public/
+│   ├── package.json
+│   └── .env
 └── backend/
     ├── app/
     │   ├── main.py
     │   ├── database.py
     │   ├── dependencies.py
     │   ├── routers/
-    │   │   ├── courses.py      # 커리큘럼/과목 API
-    │   │   ├── contents.py     # AI 추천 콘텐츠 API
-    │   │   ├── resources.py    # 유저 등록 자료 API
-    │   │   ├── folders.py      # 북마크 폴더 API
-    │   │   └── admin.py        # 관리자 API
+    │   │   ├── courses.py       # 커리큘럼/과목 API
+    │   │   ├── contents.py      # AI 추천 콘텐츠 API
+    │   │   ├── resources.py     # 유저 등록 자료 API
+    │   │   ├── folders.py       # 북마크 폴더 API
+    │   │   └── admin.py         # 관리자 API
     │   ├── services/
     │   │   ├── course_service.py
-    │   │   ├── ai_service.py   # AI 추천 파이프라인
+    │   │   ├── ai_service.py    # AI 추천 파이프라인
     │   │   └── resource_service.py
     │   └── schemas/
-    ├── populate_v2.py          # AI 콘텐츠 pre-populate 스크립트
+    ├── populate_v2.py           # AI 콘텐츠 pre-populate 스크립트
     ├── requirements.txt
     └── .env
 ```
-
 ---
 
 ## 백엔드 실행
@@ -61,7 +85,19 @@ API 문서 → `http://127.0.0.1:8000/docs`
 
 ---
 
-## 환경변수 (.env)
+## 프론트엔드 실행
+
+```bash
+cd frontend
+npm install
+
+# .env 작성 (아래 환경변수 섹션 참고)
+npm run dev
+```
+
+---
+
+## 백엔드 환경변수 (.env)
 
 ```
 NEO4J_URI=neo4j+ssc://...
@@ -75,6 +111,17 @@ NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 
 ADMIN_UID=...   # Firebase UID (관리자 계정)
+```
+
+---
+
+## 프론트엔드 환경변수 (.env)
+
+```
+VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=coursenest-85bb4.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=coursenest-85bb4
 ```
 
 ---
@@ -157,6 +204,19 @@ python3 populate_v2.py          # 매일 실행
 ```
 
 ---
+
+## 프론트엔드 페이지 구조
+
+| 경로 | 페이지 | 설명 |
+|------|--------|------|
+| `/` | Home | 단과대학·학과 선택 |
+| `/curriculum/:dept` | CurriculumGraph | 선후수 그래프 시각화 (React Flow) |
+| `/auth` | Auth | 로그인·회원가입 |
+| `/submit-resource` | SubmitResource | 학습 자료 공유 |
+| `/study-room` | MyStudyRoom | 폴더·즐겨찾기 관리 |
+
+---
+
 
 ## 배포 (EC2)
 
