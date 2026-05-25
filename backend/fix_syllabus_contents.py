@@ -12,19 +12,22 @@ from app.database import get_session
 from populate_syllabus_contents import generate_syllabus_contents
 
 DELETE_IDS = [
-    "fd720272-659d-4146-be84-465ba9ab96ca",  # 로봇프로그래밍 - 입시 블로그
-    "e5d1ae30-acb7-4b0c-b205-6973860f7e08",  # 프로그래밍기초2 - AI 영상
-    "582f9d0b-6331-4ae4-b9d6-373057980f51",  # 프로그래밍기초2 - AI 로드맵
-    "27fbce8d-b761-4ce3-918e-ba21411814d4",  # 딥러닝프로그래밍 - HongLab 로드맵
-    "035e9a6c-0511-4f35-81fa-c51c00b3a678",  # 데이터베이스 - 컴활 자격증
+    # 프로그래밍기초2 - 입시/무관 블로그 (2세트 중복)
+    "2d6c57e1-0b48-43c1-ae35-ad17d44117f1",
+    "aecf95a1-8ae1-49fe-ba64-7442ff437537",
+    "b38e79b2-1745-4030-b33c-40f550f0f2bb",
+    "eeb76218-2d72-4b4a-9aa0-e8aa0af1ea7e",
+    "fe3dede7-28a5-43fe-b91c-ce50c718f23b",
+    "df80ae84-b1f5-40b7-9256-5eef98f6f5e4",
+    # 딥러닝프로그래밍 - 도서뉴스/OpenCV 블로그
+    "91bfa7f7-1abf-40db-a8b3-81b0e4c0d043",
+    "1e06ef0b-bf7b-47ff-b157-3a50a12cc7c5",
+    "85c94ef3-9408-4f21-a1c8-89a3e13775c7",
 ]
 
-REGEN_COURSE_NAMES = [
-    "로봇프로그래밍",
-    "프로그래밍기초2",
-    "딥러닝프로그래밍",
-    "데이터베이스",
-]
+# 네이버 결과가 나쁜 과목은 YouTube only
+REGEN_YOUTUBE_ONLY = ["프로그래밍기초2", "딥러닝프로그래밍"]
+REGEN_COURSE_NAMES = ["프로그래밍기초2", "딥러닝프로그래밍"]
 
 
 def delete_contents(ids: list[str]) -> int:
@@ -59,11 +62,23 @@ def main():
     print(f"재생성 대상: {len(courses)}개 과목\n")
 
     for c in courses:
-        print(f"[{c['name']}] 생성 중...", end=" ", flush=True)
+        youtube_only = c["name"] in REGEN_YOUTUBE_ONLY
+        tag = " (YouTube only)" if youtube_only else ""
+        print(f"[{c['name']}]{tag} 생성 중...", end=" ", flush=True)
         try:
-            count = generate_syllabus_contents(
-                c["course_id"], c["name"], c.get("description"), c["syllabus"]
-            )
+            if youtube_only:
+                from app.services.ai_service import (
+                    _extract_keywords_ai, _fetch_youtube_videos, _save_and_return_contents
+                )
+                keywords = _extract_keywords_ai(c["name"], c.get("description"), syllabus=c["syllabus"])
+                raw = _fetch_youtube_videos(c["name"], keywords, populate_mode=True)
+                from app.database import get_session as _gs
+                saved = _save_and_return_contents(c["course_id"], raw, source="ai_syllabus")
+                count = len(saved)
+            else:
+                count = generate_syllabus_contents(
+                    c["course_id"], c["name"], c.get("description"), c["syllabus"]
+                )
             print(f"ai_syllabus {count}개 추가")
         except Exception as e:
             print(f"오류: {e}")
