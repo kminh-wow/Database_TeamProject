@@ -229,7 +229,11 @@ def _fetch_youtube_videos(course_name: str, keywords: list[str] = [], populate_m
         if not video_ids:
             return []
         items = _youtube_get_videos_with_duration(video_ids, api_key)
-        return _pick_videos_by_duration(items, set(), limit=2, required_keywords=req_kw)
+        result = _pick_videos_by_duration(items, set(), limit=2, required_keywords=req_kw)
+        if not result and req_kw:
+            # 키워드 필터로 전부 걸러졌으면 필터 없이 재시도
+            result = _pick_videos_by_duration(items, set(), limit=2, required_keywords=None)
+        return result
     else:
         result = []
         seen_ids: set[str] = set()
