@@ -72,6 +72,12 @@ def _extract_keywords_ai(
     if description:
         context_parts.append(f"[개요]: {description}")
     if syllabus:
+        # 행정 헤더 건너뛰고 실제 내용 부분만 사용
+        for marker in ("교과목 개요", "Course Description", "주차별 강의계획", "수업내용", "학습목표"):
+            idx = syllabus.find(marker)
+            if idx != -1:
+                syllabus = syllabus[idx:]
+                break
         context_parts.append(f"[강의계획서]: {syllabus[:1500]}")
         syl_hint = "강의계획서의 주차별 핵심어(Keyword) 항목에서 가장 구체적인 전문 용어를 우선 선택해."
     else:
